@@ -1,4 +1,4 @@
-from pyfeat import FaceLandmarkDetection, MicroExpressionRecognition
+from feat import FaceLandmarkDetection, MicroExpressionRecognition
 import cv2
 #text
 fld = FaceLandmarkDetection()
