@@ -7,6 +7,18 @@ class MyGUI:
     def __init__(self, window):
         self.window = window
         self.window.title("My GUI")
+
+        
+        # Get the screen dimensions
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+
+        # Set the size and position of the main window
+        window_width = int(screen_width * 0.8)
+        window_height = int(screen_height * 0.8)
+        window_x = int((screen_width - window_width) / 2)
+        window_y = int((screen_height - window_height) / 2)
+        self.window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
         
         # Create Live Feed button
         self.live_feed_button = tk.Button(window, text="Live Feed", command=self.live_feed)
@@ -27,9 +39,46 @@ class MyGUI:
         # Create a OpenCV capture object
         self.cap = cv2.VideoCapture(0)
 
-        # Create canvas for video display
+        # Create a label and a canvas for video display
+        self.live_feed_label = tk.Label(self.select_live_feed,text="Live Feed")
+        self.live_feed_label.pack(expand=True, side="top", anchor="center")
+
         self.canvas = tk.Canvas(self.select_live_feed, width=640, height=480)
-        self.canvas.pack(expand=True, fill='both')
+        self.canvas.pack(expand=True, fill="both", side="top")
+
+        #Create a new frame for subwindows
+        self.subwindows = tk.Frame(self.window)
+
+        self.subwindows.pack(side="bottom",fill="both", expand=True, padx=10, pady=10)
+
+        #Create subwindows to fit in the main Subwindow Frame
+        self.subwindow1 = tk.Frame(self.window)
+        
+        self.subwindow1 = tk.Frame(self.subwindows, relief="solid", borderwidth=2,)
+        self.subwindow1.grid(row=0, column=0, padx=10, pady=10,sticky="nsew")
+        self.subwindow1_label = tk.Label(self.subwindow1, text="Subwindow 1")
+        self.subwindow1_label.pack(side="top", padx=10, pady=10)
+        self.subwindow1_textbox = tk.Text(self.subwindow1)
+        self.subwindow1_textbox.pack(side="top", fill="both", expand=True, padx=10, pady=10)
+
+        self.subwindow2 = tk.Frame(self.subwindows, relief="solid", borderwidth=2,)
+        self.subwindow2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        self.subwindow2_label = tk.Label(self.subwindow2, text="Subwindow 2")
+        self.subwindow2_label.pack(side="top", padx=10, pady=10)
+        self.subwindow2_textbox = tk.Text(self.subwindow2)
+        self.subwindow2_textbox.pack(side="top", fill="both", expand=True, padx=10, pady=10)
+
+        self.subwindow3 = tk.Frame(self.subwindows, relief="solid", borderwidth=2,)
+        self.subwindow3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+        self.subwindow3_label = tk.Label(self.subwindow3, text="Subwindow 3")
+        self.subwindow3_label.pack(side="top", padx=10, pady=10)
+        self.subwindow3_textbox = tk.Text(self.subwindow3)
+        self.subwindow3_textbox.pack(side="top", fill="both", expand=True, padx=10, pady=10)
+
+        self.subwindows.rowconfigure(0, weight=1)
+        self.subwindows.columnconfigure(0, weight=1)
+        self.subwindows.columnconfigure(1, weight=1)
+        self.subwindows.columnconfigure(2, weight=1)
 
         self.back_button = tk.Button(self.select_live_feed, text="Back", command=self.back_to_main_live_feed)
         self.back_button.pack()
@@ -65,8 +114,8 @@ class MyGUI:
         self.select_video_button.pack(pady=10)
         
         # Add a button for going back to the original screen
-        self.back_button = tk.Button(self.select_video_frame, text="Back", command=self.back_to_main)
-        self.back_button.pack(pady=10)
+        self.back_button_import = tk.Button(self.select_video_frame, text="Back", command=self.back_to_main)
+        self.back_button_import.pack(pady=10)
         
         # Show the new frame for selecting video directory
         self.import_video_button.pack_forget()
@@ -94,15 +143,17 @@ class MyGUI:
 
         
     def back_to_main_live_feed(self):
-        # Stop the video and hide the frame for selecting video directory, and show the original screen
+        # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
         self.select_live_feed.destroy()
+        self.subwindows.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
 
     def back_to_main(self):
-        self.live_feed_button.pack()
-        self.import_video_button.pack()
+        self.select_video_frame.destroy()
+        self.live_feed_button.pack(pady=10)
+        self.import_video_button.pack(pady=10)
 
 if __name__ == "__main__":
     window = tk.Tk()
