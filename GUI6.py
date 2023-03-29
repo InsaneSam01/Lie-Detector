@@ -1,4 +1,4 @@
-from feat import FaceLandmarkDetection, MicroExpressionRecognition
+from pyfeat import FaceLandmarkDetection, MicroExpressionRecognition
 import cv2
 
 #make functions to recognize the methods 
