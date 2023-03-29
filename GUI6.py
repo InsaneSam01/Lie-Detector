@@ -1,8 +1,8 @@
 from pyfeat import FaceLandmarkDetection, MicroExpressionRecognition
 import cv2
 
+#make functions to recognize the methods 
 fld = FaceLandmarkDetection()
-
 mer = MicroExpressionRecognition()
 
 cap = cv2.VideoCapture(0) # Open the camera
