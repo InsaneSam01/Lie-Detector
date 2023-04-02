@@ -3,6 +3,7 @@ from tkinter import filedialog
 import cv2
 from PIL import Image
 import vlc
+import time
 
 class MyGUI:
     def __init__(self, window):
@@ -147,6 +148,9 @@ class MyGUI:
         self.pause_button = tk.Button(self.buttons_frame, text="Pause", command=self.pause)
         self.pause_button.pack(side=tk.LEFT)
 
+        self.restart_button = tk.Button(self.buttons_frame, text="Restart", command=self.restart)
+        self.restart_button.pack(side=tk.LEFT)
+
         self.skip_forward_button = tk.Button(self.buttons_frame, text=">>", command=self.skip_forward)
         self.skip_forward_button.pack(side=tk.LEFT)
 
@@ -181,6 +185,15 @@ class MyGUI:
         if self.media_player is not None:
             self.media_player.play()
 
+    def restart(self):
+        #restart video
+        if self.media_player is not None:
+            self.media_player.set_time(0)
+            time.sleep(0.1)
+            self.media_player.set_hwnd(self.canvas.winfo_id())
+            self.media_player.set_pause(True)
+
+
     def pause(self):
         #pause button functionality
         if self.media_player is not None:
@@ -207,6 +220,7 @@ class MyGUI:
 
     def back_to_main(self):
         self.select_import_video.destroy()
+        self.media_player.stop()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
 
