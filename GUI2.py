@@ -10,16 +10,8 @@ class MyGUI:
         self.window = window
         self.window.title("My GUI")
 
-        # Get the screen dimensions
-        screen_width = self.window.winfo_screenwidth()
-        screen_height = self.window.winfo_screenheight()
-
-        # Set the size and position of the main window
-        window_width = int(screen_width * 0.8)
-        window_height = int(screen_height * 0.8)
-        window_x = int((screen_width - window_width) / 2)
-        window_y = int((screen_height - window_height) / 2)
-        self.window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
+        #set the size of the window
+        self.set_window_size(window, 0.8, 0.8)
         
         # Create Live Feed button
         self.live_feed_button = tk.Button(window, text="Live Feed", command=self.live_feed)
@@ -223,9 +215,23 @@ class MyGUI:
             self.media_player.set_time(current_time + self.frame_rate) # skip one frame forward in ms
 
     def analyze_video(self):
+        #create a new window for the analysis section
         new_window = tk.Toplevel(self.window)
-        new_window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
+        self.set_window_size(new_window, 0.6, 0.6)
         
+    def set_window_size(self, window, x, y):
+
+        # Get the screen dimensions
+        screen_width = window.winfo_screenwidth()
+        screen_height = window.winfo_screenheight()
+
+        # Set the size and position of the main window
+        window_width = int(screen_width * x)
+        window_height = int(screen_height * y)
+        window_x = int((screen_width - window_width) / 2)
+        window_y = int((screen_height - window_height) / 2)
+        window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
+
     def back_to_main_live_feed(self):
         # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
