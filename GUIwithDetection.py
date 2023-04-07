@@ -5,12 +5,16 @@ import PIL.Image, PIL.ImageTk
 
 import customtkinter as tk
 import cv2
+from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.widgets import SpanSelector
 import numpy as np
 import vlc
 from customtkinter import filedialog
 from feat import Detector
 from feat.plotting import imshow
 #from PIL import Image
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 #detector = Detector()
 
@@ -45,6 +49,9 @@ class MyGUI:
         self.select_live_feed = tk.CTkFrame(self.window)
         self.select_live_feed.pack(expand=True, fill="both")
 
+        self.fig = Figure(figsize=(5, 4), dpi=100)
+        self.zoomed_fig = Figure(figsize=(5, 4), dpi=100)
+
         # Create a OpenCV capture object
         self.cap = cv2.VideoCapture(0)
 
@@ -63,12 +70,78 @@ class MyGUI:
         self.btn_live_feed_pause = tk.CTkButton(self.canvas_frame, text="Play/Pause", command=self.toggle_pause)
         self.btn_live_feed_pause.pack(side=tk.TOP, anchor=tk.CENTER)
 
+        arr_emotion=["happy", "happy", "happy", "angry", "angry", "happy", "happy", "calm", "calm", "calm", "calm", "calm"]
+        x_array = [1,2,3,4,5,6,7,8,9,10,11,12]
+
+        # Create figure and canvas
+        self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasTkAgg(self.fig)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        # Plot the initial data
+        self.ax.plot(x_array, arr_emotion)
+        self.ax.set_xlim([0, 15])
+        #self.ax.set_ylim([-5, 5])
+        self.ax.set_xlabel('Time (frame)')
+        self.ax.set_ylabel('Emotion')
+        self.ax.set_facecolor('#212121')
+        self.fig.set_facecolor('#212121')
+        self.ax.tick_params(colors='white')
+        self.ax.spines['top'].set_visible(False)
+        self.ax.spines['right'].set_visible(False)
+        self.ax.spines['bottom'].set_color('white')
+        self.ax.spines['left'].set_color('white')
+
+        # Create the zoomed-in subplot
+        self.zoomed_fig, self.zoomed_ax = plt.subplots()
+        self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig)
+        self.zoomed_canvas.draw()
+        self.zoomed_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.zoomed_ax.set_facecolor('#212121')
+        self.zoomed_fig.set_facecolor('#212121')
+        self.zoomed_ax.tick_params(colors='white')
+        self.zoomed_ax.spines['top'].set_visible(False)
+        self.zoomed_ax.spines['right'].set_visible(False)
+        self.zoomed_ax.spines['bottom'].set_color('white')
+        self.zoomed_ax.spines['left'].set_color('white')
+
+        # Create the span selector widget
+        self.span = SpanSelector(self.ax, self.zoom, 'horizontal', useblit=True,
+                                 props=dict(alpha=0.5, facecolor='grey'))
+        self.span.visible = False
+
+        # Bind the hover event to the canvas
+        self.canvas.mpl_connect('motion_notify_event', self.hover)
+
         #create a back button to return to previous screen
         self.back_button = tk.CTkButton(self.canvas_frame, text="Back", command=self.back_to_main_live_feed)
         self.back_button.pack(padx=(10,10), pady=(10,10))
-
         #call the update function
         self.update_frame()
+
+
+
+    def zoom(self, xmin, xmax):
+            x, y = self.ax.lines[0].get_data()
+            mask = (x > xmin) & (x < xmax)
+            x_zoomed, y_zoomed = x[mask], y[mask]
+            self.zoomed_ax.clear()
+            self.zoomed_ax.plot(x_zoomed, y_zoomed)
+            self.zoomed_ax.set_xlim([xmin, xmax])
+            self.zoomed_ax.set_xlabel('Time (frame)')
+            self.zoomed_ax.set_ylabel('Emotion')
+            self.zoomed_ax.set_title('Zoomed In')
+            self.zoomed_canvas.draw()
+
+    def hover(self, event):
+            if event.inaxes == self.ax:
+                x, y = event.xdata, event.ydata
+                self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
+                self.canvas.draw_idle()
+                if self.span.active:
+                    self.zoom(x)
+
 
     def update_frame(self):
         # Capture video frame
