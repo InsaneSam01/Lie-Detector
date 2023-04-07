@@ -83,7 +83,6 @@ class MyGUI:
             # Update canvas with video frame
             self.canvas_live.img_tk = img_tk
             self.canvas_live.create_image(0, 0, anchor=tk.NW, image=img_tk)
-
             #TODO include code that can take the images and store them for analysis
             
         # Repeat video loop after 15 milliseconds
@@ -169,13 +168,15 @@ class MyGUI:
     
     def select_file(self):
         #Allow selection of video through File Explorer
-        #BUG if you select a second video, it opens a new window
         file_path = tk.filedialog.askopenfilename()
         #DEV places the file path
         self.file_label.configure(text=file_path)
+        #Stop and delete old media player object if it exists
+        if self.media_player is not None:
+            self.media_player.stop()
+            del self.media_player
 
         # Create new media player object with selected file
-        #BUG located here with creating a new vlc object
         self.media_player = vlc.MediaPlayer(file_path)
 
         # Set the media player to display in the canvas
@@ -187,13 +188,18 @@ class MyGUI:
 
     def play(self):
         #play button functionality
-        #TODO reset video upon ending
+        #check if media has ended
         if self.media_player is not None:
+            if self.media_player.get_state() == vlc.State.Ended:
+             self.media_player.stop()
+             self.media_player.set_time(0)
             self.media_player.play()
+           
         
     def restart(self):
         #restart video
         if self.media_player is not None:
+            self.media_player.stop()
             self.media_player.set_time(0)
             time.sleep(0.1)
             self.media_player.set_hwnd(self.canvas_video.winfo_id())
