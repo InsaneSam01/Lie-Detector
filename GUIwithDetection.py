@@ -49,11 +49,19 @@ class MyGUI:
         self.select_live_feed = tk.CTkFrame(self.window)
         self.select_live_feed.pack(expand=True, fill="both")
 
-        self.fig = Figure(figsize=(5, 4), dpi=100)
-        self.zoomed_fig = Figure(figsize=(5, 4), dpi=100)
+        self.fig = Figure(figsize=(2, 1), dpi=100)
+        self.zoomed_fig = Figure(figsize=(2, 1), dpi=100)
 
         # Create a OpenCV capture object
         self.cap = cv2.VideoCapture(0)
+
+        #create variables for resolution and fps for opencv
+        self.width_camera = 480
+        self.height_camera = 360
+        #self.fps = 12
+
+        # Set the camera frame rate
+        #self.cap.set(cv2.CAP_PROP_FPS, fps)
 
         # Create a label for live feed
         self.live_feed_label = tk.CTkLabel(self.select_live_feed,text="Live Feed")
@@ -64,7 +72,7 @@ class MyGUI:
         self.canvas_frame.pack(side=tk.TOP, anchor=tk.CENTER)
 
         #create canvas to display live feed
-        self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=640, height=480)
+        self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width_camera, height=self.height_camera)
         self.canvas_live.pack(expand=True, fill="both", side="top")
 
         self.btn_live_feed_pause = tk.CTkButton(self.canvas_frame, text="Play/Pause", command=self.toggle_pause)
@@ -73,11 +81,15 @@ class MyGUI:
         arr_emotion=["happy", "happy", "happy", "angry", "angry", "happy", "happy", "calm", "calm", "calm", "calm", "calm"]
         x_array = [1,2,3,4,5,6,7,8,9,10,11,12]
 
+        self.figures_frame = tk.CTkFrame(self.select_live_feed)
+        self.figures_frame.pack(side=tk.TOP, fill="both", expand=True)
+
         # Create figure and canvas
         self.fig, self.ax = plt.subplots()
-        self.canvas = FigureCanvasTkAgg(self.fig)
+        self.canvas = FigureCanvasTkAgg(self.fig, self.figures_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().config(width=200, height=150)
 
         # Plot the initial data
         self.ax.plot(x_array, arr_emotion)
@@ -94,10 +106,13 @@ class MyGUI:
         self.ax.spines['left'].set_color('white')
 
         # Create the zoomed-in subplot
+        #TODO in regular canvas, if down up i expect zoomed to also be down up check plz :)
         self.zoomed_fig, self.zoomed_ax = plt.subplots()
-        self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig)
+        self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig, self.figures_frame)
         self.zoomed_canvas.draw()
         self.zoomed_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.zoomed_canvas.get_tk_widget().config(width=200, height=150)
+
         self.zoomed_ax.set_facecolor('#212121')
         self.zoomed_fig.set_facecolor('#212121')
         self.zoomed_ax.tick_params(colors='white')
@@ -146,17 +161,30 @@ class MyGUI:
     def update_frame(self):
         # Capture video frame
         ret, frame = self.cap.read()
-        
+
         if not self.paused:
             # Convert video frame to tkinter compatible format
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(img)
             img_tk = PIL.ImageTk.PhotoImage(image=img)
-            
+
             # Update canvas with video frame
             self.canvas_live.img_tk = img_tk
-            self.canvas_live.create_image(0, 0, anchor=tk.NW, image=img_tk)
-            #TODO include code that can take the images and store them for analysis
+            canvas_width = self.canvas_live.winfo_width()
+            canvas_height = self.canvas_live.winfo_height()
+
+            # Calculate the center point of the canvas
+            center_x = canvas_width / 2
+            center_y = canvas_height / 2
+
+            # Calculate the top-left corner coordinates of the frame
+            frame_width = img_tk.width()
+            frame_height = img_tk.height()
+            x = center_x - (frame_width / 2)
+            y = center_y - (frame_height / 2)
+
+            self.canvas_live.create_image(x, y, anchor=tk.NW, image=img_tk)
+            #TODO include code that can take the images and store them for  analysis
             
         # Repeat video loop after 15 milliseconds
         self.window.after(15, self.update_frame)
@@ -313,6 +341,7 @@ class MyGUI:
 
     def pause_play_CV(self):
         self.pause = not self.pause
+    
     def update_time(self):
         state = self.media_player.get_state()
         if state == vlc.State.Playing:
