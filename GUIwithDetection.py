@@ -16,7 +16,6 @@ from feat.plotting import imshow
 #from PIL import Image
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-#detector = Detector()
 
 class MyGUI:
     def __init__(self, window):
@@ -78,56 +77,10 @@ class MyGUI:
         self.btn_live_feed_pause = tk.CTkButton(self.canvas_frame, text="Play/Pause", command=self.toggle_pause)
         self.btn_live_feed_pause.pack(side=tk.TOP, anchor=tk.CENTER)
 
-        arr_emotion=["happy", "happy", "happy", "angry", "angry", "happy", "happy", "calm", "calm", "calm", "calm", "calm"]
-        x_array = [1,2,3,4,5,6,7,8,9,10,11,12]
-
         self.figures_frame = tk.CTkFrame(self.select_live_feed)
         self.figures_frame.pack(side=tk.TOP, fill="both", expand=True)
 
-        # Create figure and canvas
-        self.fig, self.ax = plt.subplots()
-        self.canvas = FigureCanvasTkAgg(self.fig, self.figures_frame)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        self.canvas.get_tk_widget().config(width=200, height=150)
-
-        # Plot the initial data
-        self.ax.plot(x_array, arr_emotion)
-        self.ax.set_xlim([0, 15])
-        #self.ax.set_ylim([-5, 5])
-        self.ax.set_xlabel('Time (frame)')
-        self.ax.set_ylabel('Emotion')
-        self.ax.set_facecolor('#212121')
-        self.fig.set_facecolor('#212121')
-        self.ax.tick_params(colors='white')
-        self.ax.spines['top'].set_visible(False)
-        self.ax.spines['right'].set_visible(False)
-        self.ax.spines['bottom'].set_color('white')
-        self.ax.spines['left'].set_color('white')
-
-        # Create the zoomed-in subplot
-        #TODO in regular canvas, if down up i expect zoomed to also be down up check plz :)
-        self.zoomed_fig, self.zoomed_ax = plt.subplots()
-        self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig, self.figures_frame)
-        self.zoomed_canvas.draw()
-        self.zoomed_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        self.zoomed_canvas.get_tk_widget().config(width=200, height=150)
-
-        self.zoomed_ax.set_facecolor('#212121')
-        self.zoomed_fig.set_facecolor('#212121')
-        self.zoomed_ax.tick_params(colors='white')
-        self.zoomed_ax.spines['top'].set_visible(False)
-        self.zoomed_ax.spines['right'].set_visible(False)
-        self.zoomed_ax.spines['bottom'].set_color('white')
-        self.zoomed_ax.spines['left'].set_color('white')
-
-        # Create the span selector widget
-        self.span = SpanSelector(self.ax, self.zoom, 'horizontal', useblit=True,
-                                 props=dict(alpha=0.5, facecolor='grey'))
-        self.span.visible = False
-
-        # Bind the hover event to the canvas
-        self.canvas.mpl_connect('motion_notify_event', self.hover)
+        self.create_plots(200, 150, self.figures_frame)
 
         #create a back button to return to previous screen
         self.back_button = tk.CTkButton(self.canvas_frame, text="Back", command=self.back_to_main_live_feed)
@@ -154,8 +107,6 @@ class MyGUI:
                 x, y = event.xdata, event.ydata
                 self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
                 self.canvas.draw_idle()
-                if self.span.active:
-                    self.zoom(x)
 
 
     def update_frame(self):
@@ -206,6 +157,10 @@ class MyGUI:
         self.select_import_video = tk.CTkFrame(self.window)
         self.select_import_video.pack(expand=True, fill="both")
         
+        #create label to show user if media is selected
+        self.media_detected = tk.CTkLabel(self.select_import_video, text="No Media Detected")
+        self.media_detected.pack()
+
         #create a label for the button
         self.file_label = tk.CTkLabel(self.select_import_video, text="Select a video file")
         self.file_label.pack()
@@ -214,7 +169,7 @@ class MyGUI:
         self.select_button = tk.CTkButton(self.select_import_video, text="Select File", command=self.select_file)
         self.select_button.pack()
 
-        #create a frame for two canvases to display the video and result side by side
+        #create a frame for ond canvas and two plots to display the video and result side by side
         self.display_output = tk.CTkFrame(self.select_import_video)
         self.display_output.pack(expand=True, fill="both")
 
@@ -222,9 +177,7 @@ class MyGUI:
         self.canvas_video = tk.CTkCanvas(self.display_output, bg="black")
         self.canvas_video.pack(fill=tk.BOTH, expand=True,side=tk.LEFT, padx=(10,0), pady=10)
 
-        #create canvas for video results
-        self.canvas_video_result = tk.CTkCanvas(self.display_output, bg="black")
-        self.canvas_video_result.pack(fill=tk.BOTH, side=tk.LEFT, expand=True, padx=(10,10), pady=10)
+        self.create_plots(1000, 150, self.display_output)
 
         # Create frame for play/pause/skipback/skipforward buttons
         self.buttons_frame = tk.CTkFrame(self.select_import_video)
@@ -235,9 +188,8 @@ class MyGUI:
 
         #create a current time label to show the current timestamp the video is on
         #WIP
-        self.label_text = tk.StringVar()
-        self.label_text.set("0:00")
-        self.text_box_current_timestamp = tk.CTkLabel(self.buttons_frame, textvariable=self.label_text)
+        self.label_text_currect = tk.StringVar()
+        self.text_box_current_timestamp = tk.CTkLabel(self.buttons_frame, textvariable=self.label_text_currect)
         self.text_box_current_timestamp.pack(side=tk.LEFT)
 
         self.play_button = tk.CTkButton(self.buttons_frame, text="Play", command=self.play)
@@ -252,7 +204,8 @@ class MyGUI:
         self.analyze_button = tk.CTkButton(self.buttons_frame, text="Analyze", command=self.analyze)
         self.analyze_button.pack(side=tk.LEFT)
 
-        self.text_box_final_timestamp = tk.CTkLabel(self.buttons_frame)
+        self.label_text_final = tk.StringVar()
+        self.text_box_final_timestamp = tk.CTkLabel(self.buttons_frame, textvariable=self.label_text_final)
         self.text_box_final_timestamp.pack(side=tk.LEFT)
 
         self.skip_forward_button = tk.CTkButton(self.buttons_frame, text=">>", command=self.skip_forward)
@@ -261,15 +214,18 @@ class MyGUI:
         # Create media player object
         self.media_player = None
         
-
-        #self.update_time()
         # Add a button for going back to the original screen
         self.back_button_import = tk.CTkButton(self.select_import_video, text="Back", command=self.back_to_main)
         self.back_button_import.pack(pady=10)
     
     def select_file(self):
+
+        if self.media_player:
+            self.media_player.stop()
         #Allow selection of video through File Explorer
         file_path = tk.filedialog.askopenfilename()
+        #update media_detected label
+        self.media_detected.configure(text="Media Found")
         #DEV places the file path
         self.file_label.configure(text=file_path)
         #Stop and delete old media player object if it exists
@@ -287,6 +243,61 @@ class MyGUI:
         #TODO Figure out how to get this data through parsing
         self.frame_rate = 34
 
+    def create_plots(self, x, y, frame):
+        arr_emotion=["happy", "happy", "happy", "angry", "angry", "happy", "happy", "calm", "calm", "calm", "calm", "calm"]
+        x_array = [1,2,3,4,5,6,7,8,9,10,11,12]
+
+        # Create figure and canvas
+        self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasTkAgg(self.fig, frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().config(width=x, height=y)
+
+        # Plot the initial data
+        self.ax.plot(x_array, arr_emotion)
+        self.ax.set_xlim([0, 15])
+        #ax.set_ylim([-5, 5])
+        self.ax.set_xlabel('Time (frame)')
+        self.ax.set_ylabel('Emotion')
+        self.ax.set_facecolor('#212121')
+        self.fig.set_facecolor('#212121')
+        self.ax.tick_params(colors='white')
+        self.ax.spines['top'].set_visible(False)
+        self.ax.spines['right'].set_visible(False)
+        self.ax.spines['bottom'].set_color('white')
+        self.ax.spines['left'].set_color('white')
+
+        # Create the zoomed-in subplot
+        self.zoomed_fig, self.zoomed_ax = plt.subplots()
+        self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig, frame)
+        self.zoomed_canvas.draw()
+        self.zoomed_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.zoomed_canvas.get_tk_widget().config(width=x, height=y)
+
+        self.zoomed_ax.set_facecolor('#212121')
+        self.zoomed_fig.set_facecolor('#212121')
+        self.zoomed_ax.tick_params(colors='white')
+        self.zoomed_ax.spines['top'].set_visible(False)
+        self.zoomed_ax.spines['right'].set_visible(False)
+        self.zoomed_ax.spines['bottom'].set_color('white')
+        self.zoomed_ax.spines['left'].set_color('white')
+
+        # Create the span selector widget
+        self.span = SpanSelector(self.ax, self.zoom, 'horizontal', useblit=True,
+                                 props=dict(alpha=0.5, facecolor='grey'))
+        self.span.set_visible(False)
+
+        # Bind the hover event to the canvas
+        self.canvas.mpl_connect('motion_notify_event', self.hover)
+
+    def update_time(self):
+        current_time = self.media_player.get_time()
+
+        self.label_text_currect.set(str(current_time/1000))
+
+        self.window.after(20, self.update_time)
+
     def play(self):
         #play button functionality
         #check if media has ended
@@ -295,6 +306,9 @@ class MyGUI:
              self.media_player.stop()
              self.media_player.set_time(0)
             self.media_player.play()
+            time.sleep(0.1)
+            self.update_time()
+            self.label_text_final.set(str(self.media_player.get_length()/1000))
            
         
     def restart(self):
@@ -341,12 +355,6 @@ class MyGUI:
 
     def pause_play_CV(self):
         self.pause = not self.pause
-    
-    def update_time(self):
-        state = self.media_player.get_state()
-        if state == vlc.State.Playing:
-            self.label_text.set(str(media_player.get_time()))
-        self.text_box_current_timestamp.after(10, self.update_time())
 
     def back_to_main_live_feed(self):
         # Stop the video and hide the live feed and subwindows, and show the original screen
@@ -356,8 +364,8 @@ class MyGUI:
         self.import_video_button.pack(pady=10)
 
     def back_to_main(self):
+        #destroy all widgets and return to main screen
         self.select_import_video.destroy()
-        self.media_player.stop()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
 
