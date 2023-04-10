@@ -22,6 +22,7 @@ class MyGUI:
         self.window = window
         self.window.title("Lie Detector")
 
+        #set dark mode and color theme
         tk.set_appearance_mode("dark")
         tk.set_default_color_theme("dark-blue")
 
@@ -48,65 +49,46 @@ class MyGUI:
         self.select_live_feed = tk.CTkFrame(self.window)
         self.select_live_feed.pack(expand=True, fill="both")
 
-        self.fig = Figure(figsize=(2, 1), dpi=100)
-        self.zoomed_fig = Figure(figsize=(2, 1), dpi=100)
-
         # Create a OpenCV capture object
         self.cap = cv2.VideoCapture(0)
 
         #create variables for resolution and fps for opencv
-        self.width_camera = 480
-        self.height_camera = 360
+        self.width_camera = 1280
+        self.height_camera = 720
         #self.fps = 12
 
         # Set the camera frame rate
         #self.cap.set(cv2.CAP_PROP_FPS, fps)
 
-        # Create a label for live feed
-        self.live_feed_label = tk.CTkLabel(self.select_live_feed,text="Live Feed")
-        self.live_feed_label.pack(side="top", anchor="center", padx=10, pady=10)
-
         #create a frame for the canvas to anchor to center
+        #BUG doesnt scale correctly
         self.canvas_frame = tk.CTkFrame(self.select_live_feed)
-        self.canvas_frame.pack(side=tk.TOP, anchor=tk.CENTER)
+        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER, padx=(100,0))
+
+        # Create a label for live feed
+        self.live_feed_label = tk.CTkLabel(self.canvas_frame, text="Live Feed")
+        self.live_feed_label.pack(side="top", anchor="center", padx=10, pady=10)
 
         #create canvas to display live feed
         self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width_camera, height=self.height_camera)
-        self.canvas_live.pack(expand=True, fill="both", side="top")
+        self.canvas_live.pack(side="top")
 
+        #create button to pause/play live feed video
         self.btn_live_feed_pause = tk.CTkButton(self.canvas_frame, text="Play/Pause", command=self.toggle_pause)
-        self.btn_live_feed_pause.pack(side=tk.TOP, anchor=tk.CENTER)
-
-        self.figures_frame = tk.CTkFrame(self.select_live_feed)
-        self.figures_frame.pack(side=tk.TOP, fill="both", expand=True)
-
-        self.create_plots(200, 150, self.figures_frame)
+        self.btn_live_feed_pause.pack(side=tk.TOP, anchor=tk.CENTER, pady=(10,0))
 
         #create a back button to return to previous screen
         self.back_button = tk.CTkButton(self.canvas_frame, text="Back", command=self.back_to_main_live_feed)
         self.back_button.pack(padx=(10,10), pady=(10,10))
+
+        #create frame for figures
+        self.figures_frame = tk.CTkFrame(self.select_live_feed)
+        self.figures_frame.pack(side=tk.LEFT, fill="both", expand=True)
+
+        self.create_plots(200, 150, self.figures_frame)
+
         #call the update function
         self.update_frame()
-
-
-
-    def zoom(self, xmin, xmax):
-            x, y = self.ax.lines[0].get_data()
-            mask = (x > xmin) & (x < xmax)
-            x_zoomed, y_zoomed = x[mask], y[mask]
-            self.zoomed_ax.clear()
-            self.zoomed_ax.plot(x_zoomed, y_zoomed)
-            self.zoomed_ax.set_xlim([xmin, xmax])
-            self.zoomed_ax.set_xlabel('Time (frame)')
-            self.zoomed_ax.set_ylabel('Emotion')
-            self.zoomed_ax.set_title('Zoomed In')
-            self.zoomed_canvas.draw()
-
-    def hover(self, event):
-            if event.inaxes == self.ax:
-                x, y = event.xdata, event.ydata
-                self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
-                self.canvas.draw_idle()
 
 
     def update_frame(self):
@@ -135,7 +117,7 @@ class MyGUI:
             y = center_y - (frame_height / 2)
 
             self.canvas_live.create_image(x, y, anchor=tk.NW, image=img_tk)
-            #TODO include code that can take the images and store them for  analysis
+            #TODO include code that can take the images and store them for analysis
             
         # Repeat video loop after 15 milliseconds
         self.window.after(15, self.update_frame)
@@ -169,20 +151,29 @@ class MyGUI:
         self.select_button = tk.CTkButton(self.select_import_video, text="Select File", command=self.select_file)
         self.select_button.pack()
 
-        #create a frame for ond canvas and two plots to display the video and result side by side
-        self.display_output = tk.CTkFrame(self.select_import_video)
-        self.display_output.pack(expand=True, fill="both")
+        #create a frame as a container for the other frames
+        self.frames_container = tk.CTkFrame(self.select_import_video)
+        self.frames_container.pack(expand=True, fill=tk.BOTH)
+
+        #create a frame for the import video canvas
+        self.display_output = tk.CTkFrame(self.frames_container)
+        self.display_output.pack(expand=True, fill="both", side=tk.LEFT)
 
         # Create canvas for video player
         self.canvas_video = tk.CTkCanvas(self.display_output, bg="black")
         self.canvas_video.pack(fill=tk.BOTH, expand=True,side=tk.LEFT, padx=(10,0), pady=10)
 
-        self.create_plots(1000, 150, self.display_output)
+        #create a Frame to place the plots in
+        self.plots = tk.CTkFrame(self.frames_container)
+        self.plots.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
+
+        self.create_plots(1500, 150, self.plots)
 
         # Create frame for play/pause/skipback/skipforward buttons
         self.buttons_frame = tk.CTkFrame(self.select_import_video)
         self.buttons_frame.pack()
 
+        #create a skip back button to go back a frame
         self.skip_back_button = tk.CTkButton(self.buttons_frame, text="<<", command=self.skip_back)
         self.skip_back_button.pack(side=tk.LEFT)
 
@@ -244,6 +235,10 @@ class MyGUI:
         self.frame_rate = 34
 
     def create_plots(self, x, y, frame):
+
+        #self.fig = Figure(figsize=(2, 1), dpi=100)
+        #self.zoomed_fig = Figure(figsize=(2, 1), dpi=100)
+
         arr_emotion=["happy", "happy", "happy", "angry", "angry", "happy", "happy", "calm", "calm", "calm", "calm", "calm"]
         x_array = [1,2,3,4,5,6,7,8,9,10,11,12]
 
@@ -252,7 +247,7 @@ class MyGUI:
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        self.canvas.get_tk_widget().config(width=x, height=y)
+        #self.canvas.get_tk_widget().config(width=x, height=y)
 
         # Plot the initial data
         self.ax.plot(x_array, arr_emotion)
@@ -273,7 +268,7 @@ class MyGUI:
         self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig, frame)
         self.zoomed_canvas.draw()
         self.zoomed_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        self.zoomed_canvas.get_tk_widget().config(width=x, height=y)
+        #self.zoomed_canvas.get_tk_widget().config(width=x, height=y)
 
         self.zoomed_ax.set_facecolor('#212121')
         self.zoomed_fig.set_facecolor('#212121')
@@ -290,6 +285,24 @@ class MyGUI:
 
         # Bind the hover event to the canvas
         self.canvas.mpl_connect('motion_notify_event', self.hover)
+
+    def zoom(self, xmin, xmax):
+            x, y = self.ax.lines[0].get_data()
+            mask = (x > xmin) & (x < xmax)
+            x_zoomed, y_zoomed = x[mask], y[mask]
+            self.zoomed_ax.clear()
+            self.zoomed_ax.plot(x_zoomed, y_zoomed)
+            self.zoomed_ax.set_xlim([xmin, xmax])
+            self.zoomed_ax.set_xlabel('Time (frame)')
+            self.zoomed_ax.set_ylabel('Emotion')
+            self.zoomed_ax.set_title('Zoomed In')
+            self.zoomed_canvas.draw()
+
+    def hover(self, event):
+            if event.inaxes == self.ax:
+                x, y = event.xdata, event.ydata
+                self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
+                self.canvas.draw_idle()
 
     def update_time(self):
         current_time = self.media_player.get_time()
