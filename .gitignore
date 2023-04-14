@@ -1,2 +1,5 @@
-test
-train
+
+#wissam ignore
+FER2013
+*.mp4
+__pycache__
