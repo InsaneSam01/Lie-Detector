@@ -49,25 +49,25 @@ class MyGUI:
         #create a new Frame for live video detection
         self.select_live_feed = tk.CTkFrame(self.window)
         self.select_live_feed.pack(expand=True, fill="both")
-
+    
         # Create a OpenCV capture object
         self.cap = cv2.VideoCapture(0)
 
-        #create variables for resolution and fps for opencv
-        self.width_camera = 1280
-        self.height_camera = 720
+        #return width and height
+        self.width = 720
+        self.height = 480
 
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
         self.canvas_frame = tk.CTkFrame(self.select_live_feed)
-        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER, padx=(100,0))
+        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER, padx=(50,0))
 
         # Create a label for live feed
         self.live_feed_label = tk.CTkLabel(self.canvas_frame, text="Live Feed")
-        self.live_feed_label.pack(side="top", anchor="center", padx=10, pady=10)
+        self.live_feed_label.pack(side="top", anchor="center")
 
         #create canvas to display live feed
-        self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width_camera, height=self.height_camera)
+        self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width, height=self.height)
         self.canvas_live.pack(side="top")
 
         #create button to pause/play live feed video
@@ -83,7 +83,7 @@ class MyGUI:
         self.figures_frame.pack(side=tk.LEFT, fill="both", expand=True)
 
         # Load the pre-trained emotion detection model
-        self.model = tf.keras.models.load_model('model_weights.h5')
+        self.model = tf.keras.models.load_model(r'C:\Users\Anas\Desktop\Project Senior\Lie-Detector\model_weights.h5')
 
         # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
         self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
@@ -97,7 +97,7 @@ class MyGUI:
     def update_frame(self):
         # Capture video frame
         ret, frame = self.cap.read()
-
+        frame = cv2.resize(frame, (self.width, self.height))
         # Define the emotion labels
         EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
@@ -106,7 +106,7 @@ class MyGUI:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # Detect faces in the grayscale frame
-            faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            faces = cv2.CascadeClassifier(r"C:\Users\Anas\Desktop\Project Senior\Lie-Detector\haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
             # Loop over the detected faces
             for (x, y, w, h) in faces:
                 # Extract the face ROI
@@ -130,7 +130,7 @@ class MyGUI:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
 
-            # Convert the updated frame to the format compatible with Tkinter
+            ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(rgb_frame)
             img_tk = PIL.ImageTk.PhotoImage(image=img)
@@ -143,7 +143,7 @@ class MyGUI:
             center_x = canvas_width / 2
             center_y = canvas_height / 2
 
-            # Calculate the top-left corner coordinates of the frame
+            ## Calculate the top-left corner coordinates of the frame
             frame_width = img_tk.width()
             frame_height = img_tk.height()
             x = center_x - (frame_width / 2)
@@ -152,6 +152,7 @@ class MyGUI:
             # Update the canvas with the emotion detection results
             self.canvas_live.create_image(x, y, anchor=tk.NW, image=img_tk)
             self.canvas_live.image = img_tk # update reference to the image to prevent garbage collection
+            
             
         # Repeat video loop after 15 milliseconds
         self.window.after(15, self.update_frame)
