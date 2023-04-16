@@ -83,7 +83,7 @@ class MyGUI:
         self.figures_frame.pack(side=tk.LEFT, fill="both", expand=True)
 
         # Load the pre-trained emotion detection model
-        self.model = tf.keras.models.load_model(r'C:\Users\Anas\Desktop\Project Senior\Lie-Detector\model_weights.h5')
+        self.model = tf.keras.models.load_model('model_weights.h5')
 
         # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
         self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
@@ -106,7 +106,7 @@ class MyGUI:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # Detect faces in the grayscale frame
-            faces = cv2.CascadeClassifier(r"C:\Users\Anas\Desktop\Project Senior\Lie-Detector\haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
             # Loop over the detected faces
             for (x, y, w, h) in faces:
                 # Extract the face ROI
@@ -400,6 +400,8 @@ class MyGUI:
     def back_to_main_live_feed(self):
         # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
+        #wip
+        del self.cap
         self.select_live_feed.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
