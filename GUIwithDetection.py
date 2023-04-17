@@ -1,20 +1,12 @@
-import os
-import pathlib
 import time
 import PIL.Image, PIL.ImageTk
-
 import customtkinter as tk
 import cv2
 from matplotlib import pyplot as plt
-from matplotlib.figure import Figure
 from matplotlib.widgets import SpanSelector
 import numpy as np
 import tensorflow as tf
 import vlc
-from customtkinter import filedialog
-from feat import Detector
-from feat.plotting import imshow
-#from PIL import Image
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
@@ -54,7 +46,7 @@ class MyGUI:
         self.cap = cv2.VideoCapture(0)
 
         #return width and height
-        self.width = 720
+        self.width = 640
         self.height = 480
 
         #create a frame for the canvas to anchor to center
@@ -186,27 +178,30 @@ class MyGUI:
         self.select_button = tk.CTkButton(self.select_import_video, text="Select File", command=self.select_file)
         self.select_button.pack()
 
+        
+
         #create a frame as a container for the other frames
         self.frames_container = tk.CTkFrame(self.select_import_video)
-        self.frames_container.pack(expand=True, fill=tk.BOTH)
+        self.frames_container.pack(side=tk.LEFT, anchor=tk.CENTER, padx=(50,0))
+        
 
         #create a frame for the import video canvas
-        self.display_output = tk.CTkFrame(self.frames_container)
-        self.display_output.pack(expand=True, fill="both", side=tk.LEFT)
+        #self.display_output = tk.CTkCanvas(self.frames_container, width=self.width, height=self.height)
+        #self.display_output.pack(side="top")
 
         # Create canvas for video player
-        self.canvas_video = tk.CTkCanvas(self.display_output, bg="black")
-        self.canvas_video.pack(fill=tk.BOTH, expand=True,side=tk.LEFT, padx=(10,0), pady=10)
+        self.canvas_video = tk.CTkCanvas(self.frames_container, width=700, height=700)
+        self.canvas_video.pack(side="top")
 
         #create a Frame to place the plots in
-        self.plots = tk.CTkFrame(self.frames_container)
-        self.plots.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
+        self.plots = tk.CTkFrame(self.select_import_video, width=700, height=700)
+        self.plots.pack(side=tk.LEFT, fill="both", expand=True)
 
         self.create_plots(self.plots)
 
         # Create frame for play/pause/skipback/skipforward buttons
-        self.buttons_frame = tk.CTkFrame(self.select_import_video)
-        self.buttons_frame.pack()
+        self.buttons_frame = tk.CTkFrame(self.frames_container)
+        self.buttons_frame.pack(side=tk.TOP, anchor=tk.CENTER, pady=(10,0))
 
         #create a skip back button to go back a frame
         self.skip_back_button = tk.CTkButton(self.buttons_frame, text="<<", command=self.skip_back)
@@ -241,7 +236,7 @@ class MyGUI:
         self.media_player = None
         
         # Add a button for going back to the original screen
-        self.back_button_import = tk.CTkButton(self.select_import_video, text="Back", command=self.back_to_main)
+        self.back_button_import = tk.CTkButton(self.frames_container, text="Back", command=self.back_to_main)
         self.back_button_import.pack(pady=10)
     
     def select_file(self):
