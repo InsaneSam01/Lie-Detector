@@ -24,16 +24,16 @@ class MyGUI:
         #set the size of the window
         self.set_window_size(window, 0.8, 0.8)
 
-        img = PIL.Image.open("CxBEoQi.jpg")
+        #img = PIL.Image.open("CxBEoQi.jpg")
 
-        self.img = tk.CTkImage(img, img, (448.4,208.1))
+        #self.img = tk.CTkImage(img, img, (448.4,208.1))
 
         # Create Live Feed button
-        self.live_feed_button = tk.CTkButton(window, text="", command=self.live_feed, image=self.img)
+        self.live_feed_button = tk.CTkButton(window, text="Live Feed", command=self.live_feed)
         self.live_feed_button.pack(pady=10)
 
-        self.labelbtn = tk.CTkLabel(window, text="Live Feed", compound=tk.CENTER, font=("Arial", 24))
-        self.labelbtn.place(in_=self.live_feed_button, relx=0.5, rely=0.5, anchor=tk.CENTER)
+        #self.labelbtn = tk.CTkLabel(window, text="Live Feed", compound=tk.CENTER, font=("Arial", 24))
+        #self.labelbtn.place(in_=self.live_feed_button, relx=0.5, rely=0.5, anchor=tk.CENTER)
         
         # Create Import Video button
         self.import_video_button = tk.CTkButton(window, text="Import Video", command=self.import_video)
