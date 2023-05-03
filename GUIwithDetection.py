@@ -9,8 +9,6 @@ import tensorflow as tf
 import vlc
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-arr_emotion=[]
-x_array = []
 
 class MyGUI:
     def __init__(self, window):
@@ -45,6 +43,9 @@ class MyGUI:
 
         self.paused = False
 
+        self.arr_emotion = []
+        self.x_array = []
+
     def live_feed(self):
 
         #Remove previous buttons with pack_forget
@@ -60,13 +61,13 @@ class MyGUI:
         self.cap = cv2.VideoCapture(0)
 
         #return width and height
-        self.width = 720
+        self.width = 960
         self.height = 720
 
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
         self.canvas_frame = tk.CTkFrame(self.select_live_feed)
-        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER, padx=(50,0))
+        self.canvas_frame.pack(side=tk.TOP, anchor=tk.CENTER, padx=(50,0))
 
         # Create a label for live feed
         self.live_feed_label = tk.CTkLabel(self.canvas_frame, text="Live Feed")
@@ -86,7 +87,7 @@ class MyGUI:
 
         #create frame for figures
         self.figures_frame = tk.CTkFrame(self.select_live_feed)
-        self.figures_frame.pack(side=tk.LEFT, fill="both", expand=True)
+        self.figures_frame.pack(side=tk.BOTTOM, fill="both", expand=True)
 
         # Load the pre-trained emotion detection model
         self.model = tf.keras.models.load_model('model_weights.h5')
@@ -101,55 +102,59 @@ class MyGUI:
 
 
     def update_frame(self):
-        # Capture video frame
-        ret, frame = self.cap.read()
-        frame = cv2.resize(frame, (self.width, self.height))
-        # Define the emotion labels
+
         EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
-        if not self.paused:
-            # Convert the frame to grayscale
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Capture video frame
+        ret, frame = self.cap.read()
+        if ret:
+            frame = cv2.resize(frame, (self.width, self.height))
+            # Define the emotion labels
+        
 
-            # Detect faces in the grayscale frame
-            faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            if not self.paused:
+                # Convert the frame to grayscale
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            label = None
-            # Loop over the detected faces
-            for (x, y, w, h) in faces:
-                # Extract the face ROI
-                roi = gray[y:y + h, x:x + w]
+                # Detect faces in the grayscale frame
+                faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+                label = None
+                # Loop over the detected faces
+                for (x, y, w, h) in faces:
+                    # Extract the face ROI
+                    roi = gray[y:y + h, x:x + w]
     
-                # Resize the face ROI to match the input size of the model
-                roi = cv2.resize(roi, (48, 48))
+                    # Resize the face ROI to match the input size of the model
+                    roi = cv2.resize(roi, (48, 48))
 
-                # Preprocess the face ROI
-                roi = roi.astype("float") / 255.0
-                roi = tf.keras.preprocessing.image.img_to_array(roi)
-                roi = np.expand_dims(roi, axis=0)
+                    # Preprocess the face ROI
+                    roi = roi.astype("float") / 255.0
+                    roi = tf.keras.preprocessing.image.img_to_array(roi)
+                    roi = np.expand_dims(roi, axis=0)
 
-                # Make a prediction on the face ROI using the emotion detection model
-                preds = self.model.predict(roi)[0]
+                    # Make a prediction on the face ROI using the emotion detection model
+                    preds = self.model.predict(roi)[0]
 
-                # Determine the dominant emotion label
-                label = EMOTIONS[preds.argmax()]
+                    # Determine the dominant emotion label
+                    label = EMOTIONS[preds.argmax()]
                 
-                # Draw the bounding box around the face and label the detected emotion
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
-
-            if label is not None:
-                arr_emotion.append(label)
-                latest_index = len(arr_emotion)
-                x_array.append(latest_index)
+                    # Draw the bounding box around the face and label the detected emotion
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            
+                if label is not None:
+                    self.arr_emotion.append(label)
+                    latest_index = len(self.arr_emotion)
+                    self.x_array.append(latest_index)
                 
-            self.ax.plot(x_array, arr_emotion)
-            self.canvas.draw()
+                self.ax.plot(self.x_array, self.arr_emotion)
+                self.canvas.draw()
 
 
             #testing
-            #print(arr_emotion)
-            #print(x_array)
+            #print(self.arr_emotion)
+            #print(self.x_array)
 
             ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -210,7 +215,7 @@ class MyGUI:
 
         #create a frame as a container for the other frames
         self.frames_container = tk.CTkFrame(self.select_import_video)
-        self.frames_container.pack(side=tk.LEFT, anchor=tk.CENTER, padx=(50,0))
+        self.frames_container.pack(side=tk.TOP, padx=(50,0), expand=True, fill=tk.BOTH)
         
 
         #create a frame for the import video canvas
@@ -218,12 +223,14 @@ class MyGUI:
         #self.display_output.pack(side="top")
 
         # Create canvas for video player
-        self.canvas_video = tk.CTkCanvas(self.frames_container, width=700, height=700)
-        self.canvas_video.pack(side="top")
+        self.canvas_video = tk.CTkCanvas(self.frames_container)
+        self.canvas_video.pack(side="top", expand=True, fill=tk.BOTH)
+
+        self.micro_expression_frame = tk.CTkFrame(self.select_import_video)
 
         #create a Frame to place the plots in
-        self.plots = tk.CTkFrame(self.select_import_video, width=700, height=700)
-        self.plots.pack(side=tk.LEFT, fill="both", expand=True)
+        self.plots = tk.CTkFrame(self.select_import_video)
+        self.plots.pack(side=tk.BOTTOM, fill="both", expand=True)
 
         self.create_plots(self.plots)
 
@@ -262,6 +269,9 @@ class MyGUI:
 
         # Create media player object
         self.media_player = None
+
+        self.arr_emotion = []
+        self.x_array = []
         
         # Add a button for going back to the original screen
         self.back_button_import = tk.CTkButton(self.frames_container, text="Back", command=self.back_to_main)
@@ -294,17 +304,14 @@ class MyGUI:
 
     def create_plots(self, frame):
 
-        arr_emotion = []
-        x_array = []
-
         # Create figure and canvas
         self.fig, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-        # Plot the initial data
-        self.ax.plot(x_array, arr_emotion)
+        # Define graph details
+        #self.ax.plot(self.x_array, self.arr_emotion)
         self.ax.set_xlabel('Time (frame)', color="white", fontsize=16)
         self.ax.set_ylabel('Emotion', color="white", fontsize=16)
         self.ax.set_facecolor('#212121')
@@ -337,10 +344,16 @@ class MyGUI:
         self.canvas.mpl_connect('motion_notify_event', self.hover)
 
     def zoom(self, xmin, xmax):
-            x, y = self.ax.lines[0].get_data()
+            
+            # Get the index of the line object
+            line_index = len(self.ax.lines) - 1
+
+            x, y = self.ax.lines[line_index].get_data()
+            #print(x,y)
             mask = (x > xmin) & (x < xmax)
             x_zoomed, y_zoomed = x[mask], y[mask]
             self.zoomed_ax.clear()
+            #print(x[mask], y[mask])
             self.zoomed_ax.plot(x_zoomed, y_zoomed)
             self.zoomed_ax.set_xlim([xmin, xmax])
             self.zoomed_ax.set_xlabel('Time (frame)',color="white", fontsize=16)
@@ -422,7 +435,6 @@ class MyGUI:
     def back_to_main_live_feed(self):
         # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
-        del self.cap
         self.select_live_feed.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
@@ -434,9 +446,6 @@ class MyGUI:
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
         self.app_quit.pack(pady=10)
-
-    #def quit_app(self):
-        #self.window.quit()
 
 if __name__ == "__main__":
     window = tk.CTk()
