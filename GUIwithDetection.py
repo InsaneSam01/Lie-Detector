@@ -1,4 +1,4 @@
-import time
+from time import sleep
 import PIL.Image, PIL.ImageTk
 import customtkinter as tk
 import cv2
@@ -9,6 +9,8 @@ import tensorflow as tf
 import vlc
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+arr_emotion=[]
+x_array = []
 
 class MyGUI:
     def __init__(self, window):
@@ -22,13 +24,24 @@ class MyGUI:
         #set the size of the window
         self.set_window_size(window, 0.8, 0.8)
 
+        img = PIL.Image.open("CxBEoQi.jpg")
+
+        self.img = tk.CTkImage(img, img, (448.4,208.1))
+
         # Create Live Feed button
-        self.live_feed_button = tk.CTkButton(window, text="Live Feed", command=self.live_feed)
+        self.live_feed_button = tk.CTkButton(window, text="", command=self.live_feed, image=self.img)
         self.live_feed_button.pack(pady=10)
+
+        self.labelbtn = tk.CTkLabel(window, text="Live Feed", compound=tk.CENTER, font=("Arial", 24))
+        self.labelbtn.place(in_=self.live_feed_button, relx=0.5, rely=0.5, anchor=tk.CENTER)
         
         # Create Import Video button
         self.import_video_button = tk.CTkButton(window, text="Import Video", command=self.import_video)
         self.import_video_button.pack(pady=10)
+
+        #create quit button
+        self.app_quit = tk.CTkButton(window, text="Quit", command=self.window.quit)
+        self.app_quit.pack(pady=10)
 
         self.paused = False
 
@@ -37,6 +50,7 @@ class MyGUI:
         #Remove previous buttons with pack_forget
         self.live_feed_button.pack_forget()
         self.import_video_button.pack_forget()
+        self.app_quit.pack_forget()
 
         #create a new Frame for live video detection
         self.select_live_feed = tk.CTkFrame(self.window)
@@ -46,8 +60,8 @@ class MyGUI:
         self.cap = cv2.VideoCapture(0)
 
         #return width and height
-        self.width = 640
-        self.height = 480
+        self.width = 720
+        self.height = 720
 
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
@@ -99,6 +113,8 @@ class MyGUI:
 
             # Detect faces in the grayscale frame
             faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+            label = None
             # Loop over the detected faces
             for (x, y, w, h) in faces:
                 # Extract the face ROI
@@ -117,10 +133,23 @@ class MyGUI:
 
                 # Determine the dominant emotion label
                 label = EMOTIONS[preds.argmax()]
-
+                
                 # Draw the bounding box around the face and label the detected emotion
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
+
+            if label is not None:
+                arr_emotion.append(label)
+                latest_index = len(arr_emotion)
+                x_array.append(latest_index)
+                
+            self.ax.plot(x_array, arr_emotion)
+            self.canvas.draw()
+
+
+            #testing
+            #print(arr_emotion)
+            #print(x_array)
 
             ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -147,7 +176,7 @@ class MyGUI:
             
             
         # Repeat video loop after 15 milliseconds
-        self.window.after(15, self.update_frame)
+        self.window.after(30, self.update_frame)
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -161,6 +190,7 @@ class MyGUI:
         #Remove previous buttons with pack_forget
         self.import_video_button.pack_forget()
         self.live_feed_button.pack_forget()
+        self.app_quit.pack_forget()
 
         #Create new Frame for the import video window
         self.select_import_video = tk.CTkFrame(self.window)
@@ -177,8 +207,6 @@ class MyGUI:
         #Create a button to allow selection of video
         self.select_button = tk.CTkButton(self.select_import_video, text="Select File", command=self.select_file)
         self.select_button.pack()
-
-        
 
         #create a frame as a container for the other frames
         self.frames_container = tk.CTkFrame(self.select_import_video)
@@ -266,8 +294,8 @@ class MyGUI:
 
     def create_plots(self, frame):
 
-        arr_emotion=["happy", "happy", "happy", "angry", "angry", "happy", "happy", "calm", "calm", "calm", "calm", "calm"]
-        x_array = [1,2,3,4,5,6,7,8,9,10,11,12]
+        arr_emotion = []
+        x_array = []
 
         # Create figure and canvas
         self.fig, self.ax = plt.subplots()
@@ -302,8 +330,7 @@ class MyGUI:
         self.zoomed_ax.spines['left'].set_color('white')
 
         # Create the span selector widget
-        self.span = SpanSelector(self.ax, self.zoom, 'horizontal', useblit=True,
-                                 props=dict(alpha=0.5, facecolor='grey'))
+        self.span = SpanSelector(self.ax, self.zoom, 'horizontal', useblit=True, props=dict(alpha=0.5, facecolor='grey'))
         self.span.set_visible(False)
 
         # Bind the hover event to the canvas
@@ -342,7 +369,7 @@ class MyGUI:
              self.media_player.stop()
              self.media_player.set_time(0)
             self.media_player.play()
-            time.sleep(0.1)
+            sleep(0.1)
             self.update_time()
             self.label_text_final.set(str(self.media_player.get_length()/1000))
            
@@ -352,7 +379,7 @@ class MyGUI:
         if self.media_player is not None:
             self.media_player.stop()
             self.media_player.set_time(0)
-            time.sleep(0.1)
+            sleep(0.1)
             self.media_player.set_hwnd(self.canvas_video.winfo_id())
             self.media_player.set_pause(True)
 
@@ -395,17 +422,21 @@ class MyGUI:
     def back_to_main_live_feed(self):
         # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
-        #wip
         del self.cap
         self.select_live_feed.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
+        self.app_quit.pack(pady=10)
 
     def back_to_main(self):
         #destroy all widgets and return to main screen
         self.select_import_video.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
+        self.app_quit.pack(pady=10)
+
+    #def quit_app(self):
+        #self.window.quit()
 
 if __name__ == "__main__":
     window = tk.CTk()
