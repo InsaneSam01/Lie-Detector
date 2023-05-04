@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 import vlc
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from feat import Detector
 
 
 class MyGUI:
@@ -60,9 +61,9 @@ class MyGUI:
         # Create a OpenCV capture object
         self.cap = cv2.VideoCapture(0)
 
-        #return width and height
-        self.width = 960
-        self.height = 720
+        #define width and height
+        self.width = 720
+        self.height = 480
 
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
@@ -75,7 +76,7 @@ class MyGUI:
 
         #create canvas to display live feed
         self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width, height=self.height)
-        self.canvas_live.pack(side="top")
+        self.canvas_live.pack(side="top",fill="both", expand=True)
 
         #create button to pause/play live feed video
         self.btn_live_feed_pause = tk.CTkButton(self.canvas_frame, text="Play/Pause", command=self.toggle_pause)
@@ -103,15 +104,15 @@ class MyGUI:
 
     def update_frame(self):
 
+        # Define the emotion labels
         EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
         # Capture video frame
         ret, frame = self.cap.read()
         if ret:
+            #resize the image to fit the tk canvas
             frame = cv2.resize(frame, (self.width, self.height))
-            # Define the emotion labels
-        
-
+            
             if not self.paused:
                 # Convert the frame to grayscale
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -151,11 +152,6 @@ class MyGUI:
                 self.ax.plot(self.x_array, self.arr_emotion)
                 self.canvas.draw()
 
-
-            #testing
-            #print(self.arr_emotion)
-            #print(self.x_array)
-
             ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(rgb_frame)
@@ -180,7 +176,7 @@ class MyGUI:
             self.canvas_live.image = img_tk # update reference to the image to prevent garbage collection
             
             
-        # Repeat video loop after 15 milliseconds
+        # Repeat video loop after 30 milliseconds
         self.window.after(30, self.update_frame)
 
     def toggle_pause(self):
@@ -196,6 +192,9 @@ class MyGUI:
         self.import_video_button.pack_forget()
         self.live_feed_button.pack_forget()
         self.app_quit.pack_forget()
+
+        #wip pyfeat detector
+        self.detector = Detector()
 
         #Create new Frame for the import video window
         self.select_import_video = tk.CTkFrame(self.window)
@@ -215,12 +214,7 @@ class MyGUI:
 
         #create a frame as a container for the other frames
         self.frames_container = tk.CTkFrame(self.select_import_video)
-        self.frames_container.pack(side=tk.TOP, padx=(50,0), expand=True, fill=tk.BOTH)
-        
-
-        #create a frame for the import video canvas
-        #self.display_output = tk.CTkCanvas(self.frames_container, width=self.width, height=self.height)
-        #self.display_output.pack(side="top")
+        self.frames_container.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
 
         # Create canvas for video player
         self.canvas_video = tk.CTkCanvas(self.frames_container)
@@ -298,9 +292,7 @@ class MyGUI:
         # Set the media player to display in the canvas
         self.media_player.set_hwnd(self.canvas_video.winfo_id())
 
-        #WIP set the framerate of the video, needed to advance video frame by frame
-        #TODO Figure out how to get this data through parsing
-        self.frame_rate = 34
+        
 
     def create_plots(self, frame):
 
@@ -308,10 +300,9 @@ class MyGUI:
         self.fig, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
 
         # Define graph details
-        #self.ax.plot(self.x_array, self.arr_emotion)
         self.ax.set_xlabel('Time (frame)', color="white", fontsize=16)
         self.ax.set_ylabel('Emotion', color="white", fontsize=16)
         self.ax.set_facecolor('#212121')
@@ -326,7 +317,7 @@ class MyGUI:
         self.zoomed_fig, self.zoomed_ax = plt.subplots()
         self.zoomed_canvas = FigureCanvasTkAgg(self.zoomed_fig, frame)
         self.zoomed_canvas.draw()
-        self.zoomed_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1,)
+        self.zoomed_canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=1,)
 
         self.zoomed_ax.set_facecolor('#212121')
         self.zoomed_fig.set_facecolor('#212121')
@@ -349,11 +340,9 @@ class MyGUI:
             line_index = len(self.ax.lines) - 1
 
             x, y = self.ax.lines[line_index].get_data()
-            #print(x,y)
             mask = (x > xmin) & (x < xmax)
             x_zoomed, y_zoomed = x[mask], y[mask]
             self.zoomed_ax.clear()
-            #print(x[mask], y[mask])
             self.zoomed_ax.plot(x_zoomed, y_zoomed)
             self.zoomed_ax.set_xlim([xmin, xmax])
             self.zoomed_ax.set_xlabel('Time (frame)',color="white", fontsize=16)
@@ -385,6 +374,19 @@ class MyGUI:
             sleep(0.1)
             self.update_time()
             self.label_text_final.set(str(self.media_player.get_length()/1000))
+
+        #WIP set the framerate of the video, needed to advance video frame by frame
+        #TODO Figure out how to get this data through parsing
+
+        # get the FPS of the video
+        #is always zero unless we play the video first
+        fps = self.media_player.get_fps()
+
+        # convert FPS from frames per second to milliseconds per frame
+        #BUG small bug about fps being float exact number 
+        #is needed to skip frame exactly, if truncated, not every
+        #press will skip frame
+        self.frame_rate = int(1000 / fps)
            
         
     def restart(self):
@@ -435,6 +437,7 @@ class MyGUI:
     def back_to_main_live_feed(self):
         # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
+        del self.cap
         self.select_live_feed.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
