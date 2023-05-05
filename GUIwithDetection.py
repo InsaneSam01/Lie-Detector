@@ -47,6 +47,9 @@ class MyGUI:
         self.arr_emotion = []
         self.x_array = []
 
+        # Define the emotion labels
+        self.EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
+
     def live_feed(self):
 
         #Remove previous buttons with pack_forget
@@ -65,10 +68,17 @@ class MyGUI:
         self.width = 720
         self.height = 480
 
+        #create a frame as a container for the other frames
+        self.frames_container_live = tk.CTkFrame(self.select_live_feed)
+        self.frames_container_live.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
+
+        self.micro_expression_frame = tk.CTkFrame(self.frames_container_live)
+        self.micro_expression_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
-        self.canvas_frame = tk.CTkFrame(self.select_live_feed)
-        self.canvas_frame.pack(side=tk.TOP, anchor=tk.CENTER, padx=(50,0))
+        self.canvas_frame = tk.CTkFrame(self.frames_container_live)
+        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER, padx=20)
 
         # Create a label for live feed
         self.live_feed_label = tk.CTkLabel(self.canvas_frame, text="Live Feed")
@@ -77,6 +87,11 @@ class MyGUI:
         #create canvas to display live feed
         self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width, height=self.height)
         self.canvas_live.pack(side="top",fill="both", expand=True)
+
+        self.radar_frame = tk.CTkFrame(self.frames_container_live)
+        self.radar_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
+        self.create_radar_graph(self.radar_frame)
 
         #create button to pause/play live feed video
         self.btn_live_feed_pause = tk.CTkButton(self.canvas_frame, text="Play/Pause", command=self.toggle_pause)
@@ -96,16 +111,13 @@ class MyGUI:
         # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
         self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
 
-        self.create_plots(self.figures_frame)
+        self.create_graphs(self.figures_frame)
 
         #call the update function
         self.update_frame()
 
 
     def update_frame(self):
-
-        # Define the emotion labels
-        EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
         # Capture video frame
         ret, frame = self.cap.read()
@@ -138,7 +150,7 @@ class MyGUI:
                     preds = self.model.predict(roi)[0]
 
                     # Determine the dominant emotion label
-                    label = EMOTIONS[preds.argmax()]
+                    label = self.EMOTIONS[preds.argmax()]
                 
                     # Draw the bounding box around the face and label the detected emotion
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -210,26 +222,22 @@ class MyGUI:
 
         #Create a button to allow selection of video
         self.select_button = tk.CTkButton(self.select_import_video, text="Select File", command=self.select_file)
-        self.select_button.pack()
+        self.select_button.pack(pady=(0,10))
 
         #create a frame as a container for the other frames
-        self.frames_container = tk.CTkFrame(self.select_import_video)
-        self.frames_container.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
+        self.frames_container_import = tk.CTkFrame(self.select_import_video)
+        self.frames_container_import.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
+
+        #frame for video player
+        self.video_container = tk.CTkFrame(self.frames_container_import)
+        self.video_container.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
         # Create canvas for video player
-        self.canvas_video = tk.CTkCanvas(self.frames_container)
-        self.canvas_video.pack(side="top", expand=True, fill=tk.BOTH)
-
-        self.micro_expression_frame = tk.CTkFrame(self.select_import_video)
-
-        #create a Frame to place the plots in
-        self.plots = tk.CTkFrame(self.select_import_video)
-        self.plots.pack(side=tk.BOTTOM, fill="both", expand=True)
-
-        self.create_plots(self.plots)
+        self.canvas_video = tk.CTkCanvas(self.video_container)
+        self.canvas_video.pack(side="top", expand=True, fill=tk.Y)
 
         # Create frame for play/pause/skipback/skipforward buttons
-        self.buttons_frame = tk.CTkFrame(self.frames_container)
+        self.buttons_frame = tk.CTkFrame(self.video_container)
         self.buttons_frame.pack(side=tk.TOP, anchor=tk.CENTER, pady=(10,0))
 
         #create a skip back button to go back a frame
@@ -261,15 +269,23 @@ class MyGUI:
         self.skip_forward_button = tk.CTkButton(self.buttons_frame, text=">>", command=self.skip_forward)
         self.skip_forward_button.pack(side=tk.LEFT)
 
+        # Add a button for going back to the original screen
+        self.back_button_import = tk.CTkButton(self.video_container, text="Back", command=self.back_to_main)
+        self.back_button_import.pack(pady=10)
+
+        #create a Frame to place the plots in
+        self.plots = tk.CTkFrame(self.select_import_video)
+        self.plots.pack(side=tk.BOTTOM, fill="both", expand=True)
+
+        self.create_graphs(self.plots)
+
         # Create media player object
         self.media_player = None
 
         self.arr_emotion = []
         self.x_array = []
         
-        # Add a button for going back to the original screen
-        self.back_button_import = tk.CTkButton(self.frames_container, text="Back", command=self.back_to_main)
-        self.back_button_import.pack(pady=10)
+        
     
     def select_file(self):
 
@@ -294,7 +310,7 @@ class MyGUI:
 
         
 
-    def create_plots(self, frame):
+    def create_graphs(self, frame):
 
         # Create figure and canvas
         self.fig, self.ax = plt.subplots()
@@ -356,6 +372,43 @@ class MyGUI:
                 self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
                 self.canvas.draw_idle()
 
+    def create_radar_graph(self, frame):
+
+        #define radar graph basics
+        fig = plt.Figure(figsize=(3, 3))
+        fig.set_facecolor('#212121')
+        canvas = FigureCanvasTkAgg(fig, frame)
+        canvas.get_tk_widget().pack(side=tk.RIGHT, fill='both', expand=1)
+
+        #get lenght of emotions
+        self.n_emotions = len(self.EMOTIONS)
+        #define inner circles
+        self.label_loc = np.linspace(start=0, stop=2 * np.pi, num=self.n_emotions, endpoint=False) + (2*np.pi/(2*self.n_emotions))
+        #create plot
+        ax = fig.add_subplot(111, polar=True)
+        ax.tick_params(axis='both', which='major', pad=7)
+
+        ax.set_facecolor('#212121')
+        ax.tick_params(colors='#1F86CF')
+
+        #change color of outer ring
+        ax.spines['polar'].set_color('white')
+
+        # Rotate plot by 90 degrees
+        ax.set_theta_offset(np.pi / 2)
+
+        #create labels to show on the radar graph
+        lines, labels = ax.set_thetagrids(np.degrees(self.label_loc), labels=self.EMOTIONS)
+        value = np.zeros(self.n_emotions)
+        self.value_plot, = ax.plot(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), marker='o', color='green', linewidth=1)
+        self.value_fill, = ax.fill(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), color='green', alpha=0.2)
+
+    def update_radar_graph(self):
+        value = np.random.randint(1, 6, size=self.n_emotions)
+        self.value_plot.set_ydata(np.append(value, value[0]))
+        self.value_fill.set_xy(np.column_stack((self.label_loc, value)))
+
+
     def update_time(self):
         current_time = self.media_player.get_time()
 
@@ -374,9 +427,6 @@ class MyGUI:
             sleep(0.1)
             self.update_time()
             self.label_text_final.set(str(self.media_player.get_length()/1000))
-
-        #WIP set the framerate of the video, needed to advance video frame by frame
-        #TODO Figure out how to get this data through parsing
 
         # get the FPS of the video
         #is always zero unless we play the video first
