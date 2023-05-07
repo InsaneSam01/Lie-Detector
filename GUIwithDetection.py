@@ -23,16 +23,9 @@ class MyGUI:
         #set the size of the window
         self.set_window_size(window, 0.8, 0.8)
 
-        #img = PIL.Image.open("CxBEoQi.jpg")
-
-        #self.img = tk.CTkImage(img, img, (448.4,208.1))
-
         # Create Live Feed button
         self.live_feed_button = tk.CTkButton(window, text="Live Feed", command=self.live_feed)
         self.live_feed_button.pack(pady=10)
-
-        #self.labelbtn = tk.CTkLabel(window, text="Live Feed", compound=tk.CENTER, font=("Arial", 24))
-        #self.labelbtn.place(in_=self.live_feed_button, relx=0.5, rely=0.5, anchor=tk.CENTER)
         
         # Create Import Video button
         self.import_video_button = tk.CTkButton(window, text="Import Video", command=self.import_video)
@@ -116,24 +109,46 @@ class MyGUI:
         
         #call the update function
         self.update_frame()
-        
 
+        self.update_text()
+
+        self.update_radar_chart(self.preds)
+
+        
     def output_box(self, parent_frame):
         title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 16))
         title_label.pack(padx=5, pady=5)
         # create the output box
         output_var = tk.StringVar()
         output_var.set("-Detection recorded from frame 10 to 16 ")
-        output_box = tk.CTkTextbox(parent_frame, height=400, width=300, state="disabled")
-        output_box.pack(side=tk.LEFT)
-        output_box.configure(state="normal")
-        output_box.insert(tk.END, output_var.get() + "\n")
-        output_box.configure(state="disabled")
+        self.output_box = tk.CTkTextbox(parent_frame, height=400, width=300, state="disabled")
+        self.output_box.pack(side=tk.LEFT)
+        self.output_box.configure(state="normal")
+        self.output_box.insert(tk.END, output_var.get() + "\n")
+        self.output_box.configure(state="disabled")
+
+    def update_text(self):
+        # Generate a random text
+        random_text = "Random text " + str(np.random.randint(1, 100))
+
+        # Clear the output box
+        self.output_box.configure(state="normal")
+        #self.output_box.delete('1.0', tk.END)
+
+        # Update the output box with the random text
+        self.output_box.insert(tk.END, random_text + "\n")
+
+        # Disable the output box
+        self.output_box.configure(state="disabled")
+
+        # Call this function again after 1 second
+        self.window.after(1000, self.update_text)
 
     def update_frame(self):
 
         # Capture video frame
         ret, frame = self.cap.read()
+
         if ret:
             #resize the image to fit the tk canvas
             frame = cv2.resize(frame, (self.width, self.height))
@@ -160,13 +175,13 @@ class MyGUI:
                     roi = np.expand_dims(roi, axis=0)
 
                     # Make a prediction on the face ROI using the emotion detection model
-                    preds = self.model.predict(roi)[0]
-                    self.num=preds
-                    rd =np.round(preds,decimals = 2)
-                    print([rd])
+                    self.preds = self.model.predict(roi)[0]
+                    #self.num = preds
+                    #rd = np.round(preds, decimals = 3)
+                    #print([rd])
 
                     # Determine the dominant emotion label
-                    label = self.EMOTIONS[preds.argmax()]
+                    label = self.EMOTIONS[self.preds.argmax()]
                     
                     # Draw the bounding box around the face and label the detected emotion
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -177,12 +192,11 @@ class MyGUI:
                     latest_index = len(self.arr_emotion)
                     self.x_array.append(latest_index)
 
-                self.update_radar_chart(self.num)
-                self.ax.plot(self.x_array, self.arr_emotion)
                 
+                self.ax.plot(self.x_array, self.arr_emotion)
                 self.canvas.draw()
             
-            
+            #self.update_radar_chart(self.num)
             ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(rgb_frame)
@@ -205,8 +219,8 @@ class MyGUI:
             # Update the canvas with the emotion detection results
             self.canvas_live.create_image(x, y, anchor=tk.NW, image=img_tk)
             self.canvas_live.image = img_tk # update reference to the image to prevent garbage collection
-        
-        
+
+        #self.update_radar_chart()
         # Repeat video loop after 30 milliseconds
         self.window.after(30, self.update_frame)
 
@@ -304,8 +318,7 @@ class MyGUI:
         self.arr_emotion = []
         self.x_array = []
         
-        
-    
+
     def select_file(self):
 
         if self.media_player:
@@ -326,8 +339,6 @@ class MyGUI:
 
         # Set the media player to display in the canvas
         self.media_player.set_hwnd(self.canvas_video.winfo_id())
-
-        
 
     def create_graphs(self, frame):
 
@@ -398,45 +409,52 @@ class MyGUI:
         #define radar graph basics
         fig = plt.Figure(figsize=(3, 3))
         fig.set_facecolor('#212121')
-        canvas = FigureCanvasTkAgg(fig, frame)
-        canvas.get_tk_widget().pack(side=tk.RIGHT, fill='both', expand=1)
+        self.radarcanvas = FigureCanvasTkAgg(fig, frame)
+        self.radarcanvas.get_tk_widget().pack(side=tk.RIGHT, fill='both', expand=1)
         
         #get lenght of emotions
         self.n_emotions = len(self.EMOTIONS)
         #define inner circles
         self.label_loc = np.linspace(start=0, stop=2 * np.pi, num=self.n_emotions, endpoint=False) + (2*np.pi/(2*self.n_emotions))
         #create plot
-        ax = fig.add_subplot(111, polar=True)
-        ax.tick_params(axis='both', which='major', pad=7)
+        self.radar = fig.add_subplot(111, polar=True)
+        self.radar.tick_params(axis='both', which='major', pad=7)
 
-        ax.set_facecolor('#212121')
-        ax.tick_params(colors='#1F86CF')
+        self.radar.set_facecolor('#212121')
+        self.radar.tick_params(colors='#1F86CF')
 
         #change color of outer ring
-        ax.spines['polar'].set_color('white')
+        self.radar.spines['polar'].set_color('white')
 
         # Rotate plot by 90 degrees
-        ax.set_theta_offset(np.pi / 2)
+        self.radar.set_theta_offset(np.pi / 2)
 
         #create labels to show on the radar graph
-        lines, labels = ax.set_thetagrids(np.degrees(self.label_loc), labels=self.EMOTIONS)
+        lines, labels = self.radar.set_thetagrids(np.degrees(self.label_loc), labels=self.EMOTIONS)
         value = np.zeros(self.n_emotions)
-        self.value_plot, = ax.plot(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), marker='o', color='green', linewidth=1)
-        self.value_fill, = ax.fill(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), color='green', alpha=0.2)
+        self.value_plot, = self.radar.plot(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), marker='o', color='green', linewidth=1)
+        self.value_fill, = self.radar.fill(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), color='green', alpha=0.2)
 
 
     def update_radar_chart(self, data):
+        #value = np.random.randint(1, 10, size=len(self.EMOTIONS))
         value = data
         self.value_plot.set_ydata(np.append(value, value[0]))
         self.value_fill.set_xy(np.column_stack((self.label_loc, value)))
-        self.canvas.draw()
+
+        self.radar.relim()
+        self.radar.autoscale_view()
+
+        self.radarcanvas.draw()
+
+        self.window.after(1000, self.update_radar_chart)
 
 
     def update_time(self):
         current_time = self.media_player.get_time()
 
         self.label_text_currect.set(str(current_time/1000))
-
+        
         self.window.after(20, self.update_time)
 
     def play(self):
