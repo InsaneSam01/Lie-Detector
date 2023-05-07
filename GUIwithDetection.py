@@ -73,8 +73,9 @@ class MyGUI:
         self.frames_container_live.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
 
         self.micro_expression_frame = tk.CTkFrame(self.frames_container_live)
-        self.micro_expression_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.micro_expression_frame.pack(side=tk.LEFT, fill=tk.BOTH)
 
+        self.output_box(self.micro_expression_frame)
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
         self.canvas_frame = tk.CTkFrame(self.frames_container_live)
@@ -112,10 +113,22 @@ class MyGUI:
         self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
 
         self.create_graphs(self.figures_frame)
-
+        
         #call the update function
         self.update_frame()
+        
 
+    def output_box(self, parent_frame):
+        title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 16))
+        title_label.pack(padx=5, pady=5)
+        # create the output box
+        output_var = tk.StringVar()
+        output_var.set("-Detection recorded from frame 10 to 16 ")
+        output_box = tk.CTkTextbox(parent_frame, height=400, width=300, state="disabled")
+        output_box.pack(side=tk.LEFT)
+        output_box.configure(state="normal")
+        output_box.insert(tk.END, output_var.get() + "\n")
+        output_box.configure(state="disabled")
 
     def update_frame(self):
 
@@ -148,10 +161,13 @@ class MyGUI:
 
                     # Make a prediction on the face ROI using the emotion detection model
                     preds = self.model.predict(roi)[0]
+                    self.num=preds
+                    rd =np.round(preds,decimals = 2)
+                    print([rd])
 
                     # Determine the dominant emotion label
                     label = self.EMOTIONS[preds.argmax()]
-                
+                    
                     # Draw the bounding box around the face and label the detected emotion
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                     cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
@@ -160,10 +176,13 @@ class MyGUI:
                     self.arr_emotion.append(label)
                     latest_index = len(self.arr_emotion)
                     self.x_array.append(latest_index)
-                
-                self.ax.plot(self.x_array, self.arr_emotion)
-                self.canvas.draw()
 
+                self.update_radar_chart(self.num)
+                self.ax.plot(self.x_array, self.arr_emotion)
+                
+                self.canvas.draw()
+            
+            
             ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(rgb_frame)
@@ -186,8 +205,8 @@ class MyGUI:
             # Update the canvas with the emotion detection results
             self.canvas_live.create_image(x, y, anchor=tk.NW, image=img_tk)
             self.canvas_live.image = img_tk # update reference to the image to prevent garbage collection
-            
-            
+        
+        
         # Repeat video loop after 30 milliseconds
         self.window.after(30, self.update_frame)
 
@@ -206,7 +225,7 @@ class MyGUI:
         self.app_quit.pack_forget()
 
         #wip pyfeat detector
-        self.detector = Detector()
+        #self.detector = Detector()
 
         #Create new Frame for the import video window
         self.select_import_video = tk.CTkFrame(self.window)
@@ -373,13 +392,15 @@ class MyGUI:
                 self.canvas.draw_idle()
 
     def create_radar_graph(self, frame):
+        title_label = tk.CTkLabel(frame, text="Emotions Detected", font=("Helvetica", 16))
+        title_label.pack(padx=5, pady=5)
 
         #define radar graph basics
         fig = plt.Figure(figsize=(3, 3))
         fig.set_facecolor('#212121')
         canvas = FigureCanvasTkAgg(fig, frame)
         canvas.get_tk_widget().pack(side=tk.RIGHT, fill='both', expand=1)
-
+        
         #get lenght of emotions
         self.n_emotions = len(self.EMOTIONS)
         #define inner circles
@@ -403,10 +424,12 @@ class MyGUI:
         self.value_plot, = ax.plot(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), marker='o', color='green', linewidth=1)
         self.value_fill, = ax.fill(np.append(self.label_loc, self.label_loc[0]), np.append(value, value[0]), color='green', alpha=0.2)
 
-    def update_radar_graph(self):
-        value = np.random.randint(1, 6, size=self.n_emotions)
+
+    def update_radar_chart(self, data):
+        value = data
         self.value_plot.set_ydata(np.append(value, value[0]))
         self.value_fill.set_xy(np.column_stack((self.label_loc, value)))
+        self.canvas.draw()
 
 
     def update_time(self):
