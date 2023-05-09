@@ -43,6 +43,12 @@ class MyGUI:
         # Define the emotion labels
         self.EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
+        # Load the pre-trained emotion detection model
+        self.model = tf.keras.models.load_model('model_weights.h5')
+
+        # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
+        self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
+
     def live_feed(self):
 
         #Remove previous buttons with pack_forget
@@ -99,21 +105,13 @@ class MyGUI:
         self.figures_frame = tk.CTkFrame(self.select_live_feed)
         self.figures_frame.pack(side=tk.BOTTOM, fill="both", expand=True)
 
-        # Load the pre-trained emotion detection model
-        self.model = tf.keras.models.load_model('model_weights.h5')
-
-        # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
-        self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
-
         self.create_graphs(self.figures_frame)
         
         #call the update function
         self.update_frame()
 
+        #self.update_radar_chart(num)
         self.update_text()
-
-        self.update_radar_chart(self.preds)
-
         
     def output_box(self, parent_frame):
         title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 16))
@@ -128,6 +126,7 @@ class MyGUI:
         self.output_box.configure(state="disabled")
 
     def update_text(self):
+
         # Generate a random text
         random_text = "Random text " + str(np.random.randint(1, 100))
 
@@ -143,6 +142,7 @@ class MyGUI:
 
         # Call this function again after 1 second
         self.window.after(1000, self.update_text)
+        
 
     def update_frame(self):
 
@@ -152,6 +152,9 @@ class MyGUI:
         if ret:
             #resize the image to fit the tk canvas
             frame = cv2.resize(frame, (self.width, self.height))
+
+            label = None
+            self.num = [0,0,0,0,0,0,0]
             
             if not self.paused:
                 # Convert the frame to grayscale
@@ -160,7 +163,7 @@ class MyGUI:
                 # Detect faces in the grayscale frame
                 faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-                label = None
+                
                 # Loop over the detected faces
                 for (x, y, w, h) in faces:
                     # Extract the face ROI
@@ -176,8 +179,7 @@ class MyGUI:
 
                     # Make a prediction on the face ROI using the emotion detection model
                     self.preds = self.model.predict(roi)[0]
-                    #self.num = preds
-                    #rd = np.round(preds, decimals = 3)
+                    self.num = np.round(self.preds * 100, decimals = 2)
                     #print([rd])
 
                     # Determine the dominant emotion label
@@ -194,6 +196,7 @@ class MyGUI:
 
                 
                 self.ax.plot(self.x_array, self.arr_emotion)
+                self.update_radar_chart(self.num)
                 self.canvas.draw()
             
             #self.update_radar_chart(self.num)
@@ -220,7 +223,6 @@ class MyGUI:
             self.canvas_live.create_image(x, y, anchor=tk.NW, image=img_tk)
             self.canvas_live.image = img_tk # update reference to the image to prevent garbage collection
 
-        #self.update_radar_chart()
         # Repeat video loop after 30 milliseconds
         self.window.after(30, self.update_frame)
 
@@ -439,15 +441,13 @@ class MyGUI:
     def update_radar_chart(self, data):
         #value = np.random.randint(1, 10, size=len(self.EMOTIONS))
         value = data
-        self.value_plot.set_ydata(np.append(value, value[0]))
-        self.value_fill.set_xy(np.column_stack((self.label_loc, value)))
+        self.value_plot.set_ydata(np.append(data, data[0]))
+        self.value_fill.set_xy(np.column_stack((self.label_loc, data)))
 
         self.radar.relim()
         self.radar.autoscale_view()
 
         self.radarcanvas.draw()
-
-        self.window.after(1000, self.update_radar_chart)
 
 
     def update_time(self):
