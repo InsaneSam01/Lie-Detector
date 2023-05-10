@@ -107,10 +107,9 @@ class MyGUI:
 
         self.create_graphs(self.figures_frame)
         
-        #call the update function
+        #call the update functions
         self.update_frame()
 
-        #self.update_radar_chart(num)
         self.update_text()
         
     def output_box(self, parent_frame):
@@ -119,30 +118,60 @@ class MyGUI:
         # create the output box
         output_var = tk.StringVar()
         output_var.set("-Detection recorded from frame 10 to 16 ")
-        self.output_box = tk.CTkTextbox(parent_frame, height=400, width=300, state="disabled")
-        self.output_box.pack(side=tk.LEFT)
-        self.output_box.configure(state="normal")
-        self.output_box.insert(tk.END, output_var.get() + "\n")
-        self.output_box.configure(state="disabled")
+        self.output_box_widget = tk.CTkTextbox(parent_frame, height=400, width=300, state="disabled")
+        self.output_box_widget.pack(side=tk.LEFT)
+        self.output_box_widget.configure(state="normal")
+        self.output_box_widget.insert(tk.END, output_var.get() + "\n")
+        self.output_box_widget.configure(state="disabled")
+
+        # set flag to True when the widget is created
+        self.output_box_visible = True
 
     def update_text(self):
+        if self.output_box_visible:
+            # Generate a random text
+            random_text = "Random text " + str(np.random.randint(1, 100))
 
-        # Generate a random text
-        random_text = "Random text " + str(np.random.randint(1, 100))
+            # Clear the output box
+            self.output_box_widget.configure(state="normal")
+            #self.output_box.delete('1.0', tk.END)
 
-        # Clear the output box
-        self.output_box.configure(state="normal")
-        #self.output_box.delete('1.0', tk.END)
+            # Update the output box with the random text
+            self.output_box_widget.insert(tk.END, random_text + "\n")
 
-        # Update the output box with the random text
-        self.output_box.insert(tk.END, random_text + "\n")
-
-        # Disable the output box
-        self.output_box.configure(state="disabled")
+            # Disable the output box
+            self.output_box_widget.configure(state="disabled")
 
         # Call this function again after 1 second
         self.window.after(1000, self.update_text)
         
+    def micro_expressions(self, emotions, start_from=0):
+        subarrays = []
+        current_emotion = None
+        current_subarray = []
+        start_index = 0
+
+        for i, emotion in enumerate(emotions[start_from:], start_from):
+            if current_emotion == emotion:
+                current_subarray.append(emotion)
+            else:
+                if current_emotion is not None and 5 <= len(current_subarray) <= 12:
+                    subarrays.append((start_index, i-1))
+                current_emotion = emotion
+                current_subarray = [emotion]
+                start_index = i
+
+        # Add last subarray if it exists
+        if current_emotion is not None and 5 <= len(current_subarray) <= 12:
+            subarrays.append((start_index, len(emotions)-1))
+
+        result = [(start, end) for start, end in subarrays if emotions[start:end+1].count(emotions[start]) == len(emotions[start:end+1]) and len(emotions[start:end+1]) >= 5]
+
+        for start, end in result:
+            duration = end - start + 1
+            emotion = emotions[start]
+            print(f"Detected micro-expression of {emotion} for {duration} frames.")
+        #return result
 
     def update_frame(self):
 
@@ -529,6 +558,7 @@ class MyGUI:
         # Stop the video and hide the live feed and subwindows, and show the original screen
         self.cap.release()
         del self.cap
+        self.output_box_visible = False
         self.select_live_feed.destroy()
         self.live_feed_button.pack(pady=10)
         self.import_video_button.pack(pady=10)
