@@ -35,10 +35,10 @@ class MyGUI:
         self.app_quit = tk.CTkButton(window, text="Quit", command=self.window.quit)
         self.app_quit.pack(pady=10)
 
-        self.paused = False
-
-        self.arr_emotion = []
-        self.x_array = []
+        self.paused = True
+        self.end = 0
+        self.line = None
+        
 
         # Define the emotion labels
         self.EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
@@ -47,7 +47,7 @@ class MyGUI:
         self.model = tf.keras.models.load_model('model_weights.h5')
 
         # Compile the model with categorical cross-entropy loss, adam optimizer, and accuracy metric
-        self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
+        self.model.compile(loss="categorical_crossentropy", optimizer= tf.keras.optimizers.Adam(learning_rate=0.0001))
 
     def live_feed(self):
 
@@ -55,6 +55,10 @@ class MyGUI:
         self.live_feed_button.pack_forget()
         self.import_video_button.pack_forget()
         self.app_quit.pack_forget()
+
+        self.arr_emotion = []
+        self.x_array = []
+        self.arr_micro_expression = []
 
         #create a new Frame for live video detection
         self.select_live_feed = tk.CTkFrame(self.window)
@@ -72,7 +76,7 @@ class MyGUI:
         self.frames_container_live.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
 
         self.micro_expression_frame = tk.CTkFrame(self.frames_container_live)
-        self.micro_expression_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.micro_expression_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
         self.output_box(self.micro_expression_frame)
         #create a frame for the canvas to anchor to center
@@ -106,20 +110,20 @@ class MyGUI:
         self.figures_frame.pack(side=tk.BOTTOM, fill="both", expand=True)
 
         self.create_graphs(self.figures_frame)
-        
+
         #call the update functions
         self.update_frame()
-
-        self.update_text()
         
+        #self.update_text()
+
     def output_box(self, parent_frame):
         title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 16))
         title_label.pack(padx=5, pady=5)
         # create the output box
         output_var = tk.StringVar()
         output_var.set("-Detection recorded from frame 10 to 16 ")
-        self.output_box_widget = tk.CTkTextbox(parent_frame, height=400, width=300, state="disabled")
-        self.output_box_widget.pack(side=tk.LEFT)
+        self.output_box_widget = tk.CTkTextbox(parent_frame, state="disabled")
+        self.output_box_widget.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
         self.output_box_widget.configure(state="normal")
         self.output_box_widget.insert(tk.END, output_var.get() + "\n")
         self.output_box_widget.configure(state="disabled")
@@ -129,27 +133,28 @@ class MyGUI:
 
     def update_text(self):
         if self.output_box_visible:
-            # Generate a random text
-            random_text = "Random text " + str(np.random.randint(1, 100))
+
+            string = self.micro_expressions(self.arr_micro_expression, 0)
 
             # Clear the output box
             self.output_box_widget.configure(state="normal")
-            #self.output_box.delete('1.0', tk.END)
+            #self.output_box_widget.delete('1.0', tk.END)
 
             # Update the output box with the random text
-            self.output_box_widget.insert(tk.END, random_text + "\n")
+            if string is not None:
+                for i in string:
+                    self.output_box_widget.insert(tk.END, i + "\n")
 
             # Disable the output box
             self.output_box_widget.configure(state="disabled")
-
-        # Call this function again after 1 second
-        self.window.after(1000, self.update_text)
         
-    def micro_expressions(self, emotions, start_from=0):
+    def micro_expressions(self, emotions, start_from):
         subarrays = []
         current_emotion = None
         current_subarray = []
         start_index = 0
+        line_current = []
+    
 
         for i, emotion in enumerate(emotions[start_from:], start_from):
             if current_emotion == emotion:
@@ -160,7 +165,6 @@ class MyGUI:
                 current_emotion = emotion
                 current_subarray = [emotion]
                 start_index = i
-
         # Add last subarray if it exists
         if current_emotion is not None and 5 <= len(current_subarray) <= 12:
             subarrays.append((start_index, len(emotions)-1))
@@ -170,8 +174,14 @@ class MyGUI:
         for start, end in result:
             duration = end - start + 1
             emotion = emotions[start]
-            print(f"Detected micro-expression of {emotion} for {duration} frames.")
-        #return result
+            line_current.append(str("Detected micro-expression of " + emotion + " for " + str(duration) + " frames.")) 
+            print(result, emotions)
+            print("////////////")
+            print(line_current)
+            print("\n")
+            
+        return line_current
+            
 
     def update_frame(self):
 
@@ -220,6 +230,7 @@ class MyGUI:
             
                 if label is not None:
                     self.arr_emotion.append(label)
+                    self.arr_micro_expression.append(label)
                     latest_index = len(self.arr_emotion)
                     self.x_array.append(latest_index)
 
@@ -228,7 +239,10 @@ class MyGUI:
                 self.update_radar_chart(self.num)
                 self.canvas.draw()
             
-            #self.update_radar_chart(self.num)
+            if self.paused:
+                self.update_text()
+                self.arr_micro_expression = []
+            
             ## Convert the updated frame to the format compatible with Tkinter
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(rgb_frame)
@@ -291,6 +305,12 @@ class MyGUI:
         #create a frame as a container for the other frames
         self.frames_container_import = tk.CTkFrame(self.select_import_video)
         self.frames_container_import.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
+
+        self.frame = tk.CTkFrame(self.frames_container_import)
+        self.frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
+        self.output_box(self.frame)
+
 
         #frame for video player
         self.video_container = tk.CTkFrame(self.frames_container_import)
