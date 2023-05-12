@@ -9,6 +9,7 @@ import tensorflow as tf
 import vlc
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from feat import Detector
+import multiprocessing
 
 
 class MyGUI:
@@ -117,16 +118,11 @@ class MyGUI:
         #self.update_text()
 
     def output_box(self, parent_frame):
-        title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 16))
+        title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 20))
         title_label.pack(padx=5, pady=5)
         # create the output box
-        output_var = tk.StringVar()
-        output_var.set("-Detection recorded from frame 10 to 16 ")
-        self.output_box_widget = tk.CTkTextbox(parent_frame, state="disabled")
+        self.output_box_widget = tk.CTkTextbox(parent_frame, state="disabled", font=("Helvetica", 18))
         self.output_box_widget.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-        self.output_box_widget.configure(state="normal")
-        self.output_box_widget.insert(tk.END, output_var.get() + "\n")
-        self.output_box_widget.configure(state="disabled")
 
         # set flag to True when the widget is created
         self.output_box_visible = True
@@ -284,7 +280,10 @@ class MyGUI:
         self.app_quit.pack_forget()
 
         #wip pyfeat detector
-        #self.detector = Detector()
+        self.detector = Detector()
+
+        self.arr_emotion = []
+        self.x_array = []
 
         #Create new Frame for the import video window
         self.select_import_video = tk.CTkFrame(self.window)
@@ -313,12 +312,12 @@ class MyGUI:
 
 
         #frame for video player
-        self.video_container = tk.CTkFrame(self.frames_container_import)
+        self.video_container = tk.CTkFrame(self.frames_container_import, width=640, height=480)
         self.video_container.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
         # Create canvas for video player
-        self.canvas_video = tk.CTkCanvas(self.video_container)
-        self.canvas_video.pack(side="top", expand=True, fill=tk.Y)
+        self.canvas_video = tk.CTkCanvas(self.video_container, width=640, height=480)
+        self.canvas_video.pack(side="top", expand=True)
 
         # Create frame for play/pause/skipback/skipforward buttons
         self.buttons_frame = tk.CTkFrame(self.video_container)
@@ -363,11 +362,8 @@ class MyGUI:
 
         self.create_graphs(self.plots)
 
-        # Create media player object
+        # Create media player variable
         self.media_player = None
-
-        self.arr_emotion = []
-        self.x_array = []
         
 
     def select_file(self):
@@ -375,18 +371,18 @@ class MyGUI:
         if self.media_player:
             self.media_player.stop()
         #Allow selection of video through File Explorer
-        file_path = tk.filedialog.askopenfilename()
+        self.file_path = tk.filedialog.askopenfilename()
         #update media_detected label
         self.media_detected.configure(text="Media Found")
         #DEV places the file path
-        self.file_label.configure(text=file_path)
+        self.file_label.configure(text=self.file_path)
         #Stop and delete old media player object if it exists
         if self.media_player is not None:
             self.media_player.stop()
             del self.media_player
 
         # Create new media player object with selected file
-        self.media_player = vlc.MediaPlayer(file_path)
+        self.media_player = vlc.MediaPlayer(self.file_path)
 
         # Set the media player to display in the canvas
         self.media_player.set_hwnd(self.canvas_video.winfo_id())
@@ -416,6 +412,7 @@ class MyGUI:
         self.zoomed_canvas.draw()
         self.zoomed_canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=1,)
 
+        # Define zoomed graph details
         self.zoomed_ax.set_facecolor('#212121')
         self.zoomed_fig.set_facecolor('#212121')
         self.zoomed_ax.tick_params(colors='white')
@@ -434,7 +431,8 @@ class MyGUI:
     def zoom(self, xmin, xmax):
             
             # Get the index of the line object
-            line_index = len(self.ax.lines) - 1
+            if self.ax.lines is not None:
+                line_index = len(self.ax.lines) - 1
 
             x, y = self.ax.lines[line_index].get_data()
             mask = (x > xmin) & (x < xmax)
@@ -454,7 +452,7 @@ class MyGUI:
                 self.canvas.draw_idle()
 
     def create_radar_graph(self, frame):
-        title_label = tk.CTkLabel(frame, text="Emotions Detected", font=("Helvetica", 16))
+        title_label = tk.CTkLabel(frame, text="Emotions Detected", font=("Helvetica", 20))
         title_label.pack(padx=5, pady=5)
 
         #define radar graph basics
@@ -568,8 +566,17 @@ class MyGUI:
         window_y = int((screen_height - window_height) / 2)
         window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
 
+    def run_analyze(self):
+
+        self.video_prediction = self.detector.detect_video(self.file_path, batch_size=32, output_size=350, num_workers=0, skip_frames=20)
+        #print(self.video_prediction[160:171])
+        #self.ax.plot(self.x_array, self.arr_emotion)
+
     def analyze(self):
-        pass
+        #wip we need to figure out a way to run the task and maybe show a loading screen without it freezing
+        p1 = multiprocessing.Process(target=self.run_analyze())
+        p1.start()
+
 
     def pause_play_CV(self):
         self.pause = not self.pause
