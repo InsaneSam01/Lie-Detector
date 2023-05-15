@@ -10,6 +10,8 @@ import vlc
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from feat import Detector
 import multiprocessing
+import threading
+from threading import Thread
 
 
 class MyGUI:
@@ -127,10 +129,10 @@ class MyGUI:
         # set flag to True when the widget is created
         self.output_box_visible = True
 
-    def update_text(self):
+    def update_text(self, data):
         if self.output_box_visible:
 
-            string = self.micro_expressions(self.arr_micro_expression, 0)
+            string = self.micro_expressions(data, 0)
 
             # Clear the output box
             self.output_box_widget.configure(state="normal")
@@ -236,7 +238,7 @@ class MyGUI:
                 self.canvas.draw()
             
             if self.paused:
-                self.update_text()
+                self.update_text(self.arr_micro_expression)
                 self.arr_micro_expression = []
             
             ## Convert the updated frame to the format compatible with Tkinter
@@ -361,10 +363,13 @@ class MyGUI:
         self.plots.pack(side=tk.BOTTOM, fill="both", expand=True)
 
         self.create_graphs(self.plots)
-
+        
         # Create media player variable
         self.media_player = None
         
+             
+
+
 
     def select_file(self):
 
@@ -567,10 +572,17 @@ class MyGUI:
         window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
 
     def run_analyze(self):
-
-        self.video_prediction = self.detector.detect_video(self.file_path, batch_size=32, output_size=350, num_workers=0, skip_frames=20)
+        self.max_emotion=[]
+        self.video_prediction = self.detector.detect_video(self.file_path, batch_size=60, output_size=350, num_workers=0)
+        emotion= self.video_prediction[['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise', 'neutral']].idxmax(axis=1)
+        self.max_emotion=emotion.to_numpy()
+        variable=self.max_emotion.tolist()
+        print(self.max_emotion)
         #print(self.video_prediction[160:171])
         #self.ax.plot(self.x_array, self.arr_emotion)
+        self.ax.plot(emotion)
+        self.update_text(variable)
+
 
     def analyze(self):
         #wip we need to figure out a way to run the task and maybe show a loading screen without it freezing
