@@ -9,13 +9,10 @@ import tensorflow as tf
 import vlc
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from feat import Detector
-import multiprocessing
-import threading
-from threading import Thread
-
 
 class MyGUI:
     def __init__(self, window):
+        #main window
         self.window = window
         self.window.title("Lie Detector")
 
@@ -38,11 +35,9 @@ class MyGUI:
         self.app_quit = tk.CTkButton(window, text="Quit", command=self.window.quit)
         self.app_quit.pack(pady=10)
 
+        #variable for the live feed video in order to pause and play
         self.paused = True
-        self.end = 0
-        self.line = None
         
-
         # Define the emotion labels
         self.EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
@@ -59,6 +54,8 @@ class MyGUI:
         self.import_video_button.pack_forget()
         self.app_quit.pack_forget()
 
+        #variables needed to plot data taken directly from the analyzed image roi's (region of interest)
+        #and stored in these variables
         self.arr_emotion = []
         self.x_array = []
         self.arr_micro_expression = []
@@ -78,6 +75,7 @@ class MyGUI:
         self.frames_container_live = tk.CTkFrame(self.select_live_feed)
         self.frames_container_live.pack(side=tk.TOP, padx=(50,50), expand=True, fill=tk.BOTH)
 
+        #frame to place the textbox needed to display the micro-expression result
         self.micro_expression_frame = tk.CTkFrame(self.frames_container_live)
         self.micro_expression_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
@@ -95,9 +93,11 @@ class MyGUI:
         self.canvas_live = tk.CTkCanvas(self.canvas_frame, width=self.width, height=self.height)
         self.canvas_live.pack(side="top",fill="both", expand=True)
 
+        #radar frame for the placing of the radar graph, needed to display current emotion in real time
         self.radar_frame = tk.CTkFrame(self.frames_container_live)
         self.radar_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
+        #function call
         self.create_radar_graph(self.radar_frame)
 
         #create button to pause/play live feed video
@@ -112,18 +112,18 @@ class MyGUI:
         self.figures_frame = tk.CTkFrame(self.select_live_feed)
         self.figures_frame.pack(side=tk.BOTTOM, fill="both", expand=True)
 
+        #function call
         self.create_graphs(self.figures_frame)
 
         #call the update functions
         self.update_frame()
-        
-        #self.update_text()
 
     def output_box(self, parent_frame):
+        #the title of the textbox
         title_label = tk.CTkLabel(parent_frame, text="Micro-Expressions Detected", font=("Helvetica", 20))
         title_label.pack(padx=5, pady=5)
         # create the output box
-        self.output_box_widget = tk.CTkTextbox(parent_frame, state="disabled", font=("Helvetica", 18))
+        self.output_box_widget = tk.CTkTextbox(parent_frame, state="disabled", font=("Helvetica", 16))
         self.output_box_widget.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
         # set flag to True when the widget is created
@@ -131,58 +131,61 @@ class MyGUI:
 
     def update_text(self, data):
         if self.output_box_visible:
-
-            string = self.micro_expressions(data, 0)
+            #call micro_expressions to calculate when a micro-expression is found
+            #returns list
+            list = self.micro_expressions(data, 0)
 
             # Clear the output box
             self.output_box_widget.configure(state="normal")
-            #self.output_box_widget.delete('1.0', tk.END)
 
             # Update the output box with the random text
-            if string is not None:
-                for i in string:
+            if list is not None:
+                for i in list:
                     self.output_box_widget.insert(tk.END, i + "\n")
 
             # Disable the output box
             self.output_box_widget.configure(state="disabled")
         
     def micro_expressions(self, emotions, start_from):
-        subarrays = []
-        current_emotion = None
-        current_subarray = []
-        start_index = 0
-        line_current = []
-    
+        subarrays = [] # List to store subarrays with micro-expressions
+        current_emotion = None # Current emotion being processed
+        current_subarray = [] # Current subarray of consecutive emotions
+        start_index = 0 # Start index of the current subarray
+        line_current = [] # List to store descriptions of detected micro-expressions
 
+        # Iterate over emotions starting from start_from index
         for i, emotion in enumerate(emotions[start_from:], start_from):
             if current_emotion == emotion:
                 current_subarray.append(emotion)
             else:
+                # Check if the current subarray meets length criteria
                 if current_emotion is not None and 5 <= len(current_subarray) <= 12:
-                    subarrays.append((start_index, i-1))
+                    subarrays.append((start_index, i-1)) # Add subarray to the list
                 current_emotion = emotion
-                current_subarray = [emotion]
-                start_index = i
+                current_subarray = [emotion] # Start a new subarray
+                start_index = i # Update start index
+
         # Add last subarray if it exists
         if current_emotion is not None and 5 <= len(current_subarray) <= 12:
             subarrays.append((start_index, len(emotions)-1))
 
+        # Filter subarrays and generate descriptions for micro-expressions
         result = [(start, end) for start, end in subarrays if emotions[start:end+1].count(emotions[start]) == len(emotions[start:end+1]) and len(emotions[start:end+1]) >= 5]
 
+        # Generate descriptions and print intermediate results
         for start, end in result:
             duration = end - start + 1
             emotion = emotions[start]
-            line_current.append(str("Detected micro-expression of " + emotion + " for " + str(duration) + " frames.")) 
+            line_current.append(str("Detected micro-expression of " + emotion + " for " + str(duration) + " frames from frame " + str(start + 1) + " to " + str(end + 1) + ".\n"))
             print(result, emotions)
             print("////////////")
             print(line_current)
             print("\n")
             
-        return line_current
+        return line_current # Return descriptions of detected micro-expressions
             
 
     def update_frame(self):
-
         # Capture video frame
         ret, frame = self.cap.read()
 
@@ -200,7 +203,6 @@ class MyGUI:
                 # Detect faces in the grayscale frame
                 faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-                
                 # Loop over the detected faces
                 for (x, y, w, h) in faces:
                     # Extract the face ROI
@@ -227,12 +229,13 @@ class MyGUI:
                     cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
             
                 if label is not None:
+                    #append the label to the list
                     self.arr_emotion.append(label)
                     self.arr_micro_expression.append(label)
                     latest_index = len(self.arr_emotion)
                     self.x_array.append(latest_index)
 
-                
+                #plot the graph with the data collected
                 self.ax.plot(self.x_array, self.arr_emotion)
                 self.update_radar_chart(self.num)
                 self.canvas.draw()
@@ -268,6 +271,7 @@ class MyGUI:
         self.window.after(30, self.update_frame)
 
     def toggle_pause(self):
+        #change value of paused
         self.paused = not self.paused
         if self.paused:
             self.btn_live_feed_pause.configure(text="Resume")
@@ -310,8 +314,8 @@ class MyGUI:
         self.frame = tk.CTkFrame(self.frames_container_import)
         self.frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
+        #create textbox for micro-expression result
         self.output_box(self.frame)
-
 
         #frame for video player
         self.video_container = tk.CTkFrame(self.frames_container_import, width=640, height=480)
@@ -329,12 +333,12 @@ class MyGUI:
         self.skip_back_button = tk.CTkButton(self.buttons_frame, text="<<", command=self.skip_back)
         self.skip_back_button.pack(side=tk.LEFT)
 
-        #create a current time label to show the current timestamp the video is on
-        #WIP
+        #create a current time label to show the current timestamp the video is on (WIP)
         self.label_text_currect = tk.StringVar()
         self.text_box_current_timestamp = tk.CTkLabel(self.buttons_frame, textvariable=self.label_text_currect)
         self.text_box_current_timestamp.pack(side=tk.LEFT)
 
+        #define and place all buttons under the import video canvas
         self.play_button = tk.CTkButton(self.buttons_frame, text="Play", command=self.play)
         self.play_button.pack(side=tk.LEFT)
 
@@ -362,17 +366,13 @@ class MyGUI:
         self.plots = tk.CTkFrame(self.select_import_video)
         self.plots.pack(side=tk.BOTTOM, fill="both", expand=True)
 
+        #create graphs for data visualization
         self.create_graphs(self.plots)
         
         # Create media player variable
         self.media_player = None
         
-             
-
-
-
     def select_file(self):
-
         if self.media_player:
             self.media_player.stop()
         #Allow selection of video through File Explorer
@@ -393,7 +393,6 @@ class MyGUI:
         self.media_player.set_hwnd(self.canvas_video.winfo_id())
 
     def create_graphs(self, frame):
-
         # Create figure and canvas
         self.fig, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
@@ -434,29 +433,42 @@ class MyGUI:
         self.canvas.mpl_connect('motion_notify_event', self.hover)
 
     def zoom(self, xmin, xmax):
-            
-            # Get the index of the line object
-            if self.ax.lines is not None:
-                line_index = len(self.ax.lines) - 1
+        # Get the index of the line object
+        if self.ax.lines is not None:
+            line_index = len(self.ax.lines) - 1 # Index of the last line object in the plot
 
-            x, y = self.ax.lines[line_index].get_data()
-            mask = (x > xmin) & (x < xmax)
-            x_zoomed, y_zoomed = x[mask], y[mask]
-            self.zoomed_ax.clear()
-            self.zoomed_ax.plot(x_zoomed, y_zoomed)
-            self.zoomed_ax.set_xlim([xmin, xmax])
-            self.zoomed_ax.set_xlabel('Time (frame)',color="white", fontsize=16)
-            self.zoomed_ax.set_ylabel('Emotion', color="white", fontsize=16)
-            self.zoomed_ax.set_title('Zoomed In',color="white")
-            self.zoomed_canvas.draw()
+        # Get the x and y data of the last line object
+        x, y = self.ax.lines[line_index].get_data()
+
+        # Create a boolean mask to select data within the zoom range
+        mask = (x > xmin) & (x < xmax)
+
+         # Apply the mask to get the zoomed-in data
+        x_zoomed, y_zoomed = x[mask], y[mask]
+
+        # Clear the zoomed-in subplot and plot the zoomed-in data
+        self.zoomed_ax.clear()
+        self.zoomed_ax.plot(x_zoomed, y_zoomed)
+
+        # Set the x-axis limits of the zoomed-in subplot
+        self.zoomed_ax.set_xlim([xmin, xmax])
+
+        # Set the x-axis label, y-axis label, and title of the zoomed-in subplot
+        self.zoomed_ax.set_xlabel('Time (frame)',color="white", fontsize=16)
+        self.zoomed_ax.set_ylabel('Emotion', color="white", fontsize=16)
+        self.zoomed_ax.set_title('Zoomed In',color="white")
+
+        # Redraw the canvas to update the zoomed-in plot
+        self.zoomed_canvas.draw()
 
     def hover(self, event):
-            if event.inaxes == self.ax:
-                x, y = event.xdata, event.ydata
-                self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
-                self.canvas.draw_idle()
+        if event.inaxes == self.ax:
+            x, y = event.xdata, event.ydata
+            self.ax.format_coord = lambda x, y: f'Time={x:.2f}, Amplitude={y:.2f}'
+            self.canvas.draw_idle()
 
     def create_radar_graph(self, frame):
+        #create title for radar graph
         title_label = tk.CTkLabel(frame, text="Emotions Detected", font=("Helvetica", 20))
         title_label.pack(padx=5, pady=5)
 
@@ -470,10 +482,9 @@ class MyGUI:
         self.n_emotions = len(self.EMOTIONS)
         #define inner circles
         self.label_loc = np.linspace(start=0, stop=2 * np.pi, num=self.n_emotions, endpoint=False) + (2*np.pi/(2*self.n_emotions))
-        #create plot
+        #create plot and define look
         self.radar = fig.add_subplot(111, polar=True)
         self.radar.tick_params(axis='both', which='major', pad=7)
-
         self.radar.set_facecolor('#212121')
         self.radar.tick_params(colors='#1F86CF')
 
@@ -491,22 +502,16 @@ class MyGUI:
 
 
     def update_radar_chart(self, data):
-        #value = np.random.randint(1, 10, size=len(self.EMOTIONS))
-        value = data
         self.value_plot.set_ydata(np.append(data, data[0]))
         self.value_fill.set_xy(np.column_stack((self.label_loc, data)))
-
         self.radar.relim()
         self.radar.autoscale_view()
-
         self.radarcanvas.draw()
 
 
     def update_time(self):
         current_time = self.media_player.get_time()
-
         self.label_text_currect.set(str(current_time/1000))
-        
         self.window.after(20, self.update_time)
 
     def play(self):
@@ -514,24 +519,20 @@ class MyGUI:
         #check if media has ended
         if self.media_player is not None:
             if self.media_player.get_state() == vlc.State.Ended:
-             self.media_player.stop()
-             self.media_player.set_time(0)
+                self.media_player.stop()
+                self.media_player.set_time(0)
             self.media_player.play()
             sleep(0.1)
             self.update_time()
             self.label_text_final.set(str(self.media_player.get_length()/1000))
 
-        # get the FPS of the video
-        #is always zero unless we play the video first
+        # get the FPS of the video, is always zero unless we play the video first
         fps = self.media_player.get_fps()
 
-        # convert FPS from frames per second to milliseconds per frame
-        #BUG small bug about fps being float exact number 
-        #is needed to skip frame exactly, if truncated, not every
-        #press will skip frame
+        #convert FPS from frames per second to milliseconds per frame
+        #BUG small bug about fps being float exact number, is needed to skip frame exactly, if truncated, not every press will skip frame
         self.frame_rate = int(1000 / fps)
            
-        
     def restart(self):
         #restart video
         if self.media_player is not None:
@@ -571,26 +572,19 @@ class MyGUI:
         window_y = int((screen_height - window_height) / 2)
         window.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
 
-    def run_analyze(self):
-        self.max_emotion=[]
-        self.video_prediction = self.detector.detect_video(self.file_path, batch_size=60, output_size=350, num_workers=0)
-        emotion= self.video_prediction[['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise', 'neutral']].idxmax(axis=1)
-        self.max_emotion=emotion.to_numpy()
-        variable=self.max_emotion.tolist()
-        print(self.max_emotion)
-        #print(self.video_prediction[160:171])
-        #self.ax.plot(self.x_array, self.arr_emotion)
+    def analyze(self):
+        #wip we need to figure out a way to run the task and maybe show a loading screen without it freezing WIP
+        self.max_emotion=[] #list containing emotions
+        self.video_prediction = self.detector.detect_video(self.file_path, batch_size=60, output_size=350, num_workers=0) #detection method from pyfeat
+        emotion = self.video_prediction[['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise', 'neutral']].idxmax(axis=1)
+        self.max_emotion = emotion.to_numpy()
+        variable = self.max_emotion.tolist()
+        #print(self.max_emotion)
         self.ax.plot(emotion)
         self.update_text(variable)
 
-
-    def analyze(self):
-        #wip we need to figure out a way to run the task and maybe show a loading screen without it freezing
-        p1 = multiprocessing.Process(target=self.run_analyze())
-        p1.start()
-
-
     def pause_play_CV(self):
+        #pause for import video vlc
         self.pause = not self.pause
 
     def back_to_main_live_feed(self):
