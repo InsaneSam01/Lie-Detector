@@ -596,16 +596,16 @@ class MyGUI:
         del self.cap
         self.output_box_visible = False
         self.select_live_feed.destroy()
-        self.live_feed_button.pack(pady=10)
-        self.import_video_button.pack(pady=10)
-        self.app_quit.pack(pady=10)
+        self.live_feed_button.pack(pady=10,ipadx=20, ipady=10)
+        self.import_video_button.pack(pady=10, ipadx=20, ipady=10)
+        self.app_quit.pack(pady=10, ipadx=20, ipady=10)
 
     def back_to_main(self):
         #destroy all widgets and return to main screen
         self.select_import_video.destroy()
-        self.live_feed_button.pack(pady=10)
-        self.import_video_button.pack(pady=10)
-        self.app_quit.pack(pady=10)
+        self.live_feed_button.pack(pady=10, ipadx=20, ipady=10)
+        self.import_video_button.pack(pady=10, ipadx=20, ipady=10)
+        self.app_quit.pack(pady=10,ipadx=20, ipady=10)
 
 if __name__ == "__main__":
     window = tk.CTk()
