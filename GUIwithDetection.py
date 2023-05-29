@@ -25,15 +25,15 @@ class MyGUI:
 
         # Create Live Feed button
         self.live_feed_button = tk.CTkButton(window, text="Live Feed", command=self.live_feed)
-        self.live_feed_button.pack(pady=10)
+        self.live_feed_button.pack(pady=10, ipadx=20, ipady=10)
         
         # Create Import Video button
         self.import_video_button = tk.CTkButton(window, text="Import Video", command=self.import_video)
-        self.import_video_button.pack(pady=10)
+        self.import_video_button.pack(pady=10, ipadx=20, ipady=10)
 
         #create quit button
         self.app_quit = tk.CTkButton(window, text="Quit", command=self.window.quit)
-        self.app_quit.pack(pady=10)
+        self.app_quit.pack(pady=10, ipadx=20, ipady=10)
 
         #variable for the live feed video in order to pause and play
         self.paused = True
@@ -78,12 +78,12 @@ class MyGUI:
         #frame to place the textbox needed to display the micro-expression result
         self.micro_expression_frame = tk.CTkFrame(self.frames_container_live)
         self.micro_expression_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-
         self.output_box(self.micro_expression_frame)
+        
         #create a frame for the canvas to anchor to center
         #BUG doesnt scale correctly
         self.canvas_frame = tk.CTkFrame(self.frames_container_live)
-        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER, padx=20)
+        self.canvas_frame.pack(side=tk.LEFT, anchor=tk.CENTER)
 
         # Create a label for live feed
         self.live_feed_label = tk.CTkLabel(self.canvas_frame, text="Live Feed")
@@ -124,7 +124,7 @@ class MyGUI:
         title_label.pack(padx=5, pady=5)
         # create the output box
         self.output_box_widget = tk.CTkTextbox(parent_frame, state="disabled", font=("Helvetica", 16))
-        self.output_box_widget.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.output_box_widget.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=20, pady=20)
 
         # set flag to True when the widget is created
         self.output_box_visible = True
@@ -193,12 +193,15 @@ class MyGUI:
             #resize the image to fit the tk canvas
             frame = cv2.resize(frame, (self.width, self.height))
 
+            #flip the frame coming from the videocapture on the x-axis
+            fliped_frame = cv2.flip(frame, 1)
+
             label = None
             self.num = [0,0,0,0,0,0,0]
             
             if not self.paused:
                 # Convert the frame to grayscale
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                gray = cv2.cvtColor(fliped_frame, cv2.COLOR_BGR2GRAY)
 
                 # Detect faces in the grayscale frame
                 faces = cv2.CascadeClassifier("haarcascade_frontalface_default.xml").detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
@@ -225,8 +228,8 @@ class MyGUI:
                     label = self.EMOTIONS[self.preds.argmax()]
                     
                     # Draw the bounding box around the face and label the detected emotion
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                    cv2.rectangle(fliped_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    cv2.putText(fliped_frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
             
                 if label is not None:
                     #append the label to the list
@@ -245,7 +248,7 @@ class MyGUI:
                 self.arr_micro_expression = []
             
             ## Convert the updated frame to the format compatible with Tkinter
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            rgb_frame = cv2.cvtColor(fliped_frame, cv2.COLOR_BGR2RGB)
             img = PIL.Image.fromarray(rgb_frame)
             img_tk = PIL.ImageTk.PhotoImage(image=img)
 
@@ -397,7 +400,7 @@ class MyGUI:
         self.fig, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1,)
 
         # Define graph details
         self.ax.set_xlabel('Time (frame)', color="white", fontsize=16)
